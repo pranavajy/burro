@@ -67,6 +67,7 @@ function App() {
 		<div className="workflow" style={{ position: 'fixed', inset: 0 }}>
 			<Tldraw
 				persistenceKey="workflow"
+				colorScheme="dark"
 				options={options}
 				overrides={overrides}
 				shapeUtils={shapeUtils}
@@ -79,7 +80,7 @@ function App() {
 						editor.createShape({ type: 'node', x: 200, y: 200 })
 					}
 
-					editor.user.updateUserPreferences({ isSnapMode: true })
+					editor.user.updateUserPreferences({ isSnapMode: true, colorScheme: 'dark' })
 
 					// Add our custom pointing port tool to the select tool's state machine
 					// This allows users to create connections by pointing at ports

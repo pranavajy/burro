@@ -1,3 +1,14 @@
-/*/node_modules
+# dependencies
 node_modules
 .yarn/
+/*/node_modules
+
+# production / build output
+dist
+.wrangler
+
+# local env files containing secrets
+.env
+.env.local
+.env.*.local
+.dev.vars

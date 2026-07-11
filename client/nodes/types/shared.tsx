@@ -65,9 +65,11 @@ export function updateNode<T extends NodeType>(
 	shape: NodeShape,
 	update: (node: T) => T
 ) {
+	const latestShape = editor.getShape(shape.id) as NodeShape | undefined
+	if (!latestShape) return
 	editor.updateShape({
 		id: shape.id,
 		type: shape.type,
-		props: { node: update(shape.props.node as T) },
+		props: { node: update(latestShape.props.node as T) },
 	})
 }
