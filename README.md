@@ -1,129 +1,174 @@
-<a href="https://github.com/pranavajy/burro">
-  <h1 align="center">
-    <picture>
-      <img alt="Burro" src="./image-2.png" width="340">
-    </picture>
-  </h1>
-</a>
+<p align="center">
+  <a href="https://github.com/pranavajy/burro">
+    <img alt="Burro" src="./image-2.png" width="300">
+  </a>
+</p>
 
 <p align="center">
-  <a href="https://github.com/pranavajy/burro/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/pranavajy/burro/ci.yml?branch=main&style=flat-square" alt="Build Status">
-  </a>
-  <a href="https://vitejs.dev/">
-    <img src="https://img.shields.io/badge/Vite-8.0-646CFF?style=flat-square&logo=vite" alt="Vite version">
-  </a>
-  <a href="https://tailwindcss.com/">
-    <img src="https://img.shields.io/badge/Tailwind--v4.0-06B6D4?style=flat-square&logo=tailwindcss" alt="Tailwind version">
-  </a>
-  <a href="https://workers.cloudflare.com/">
-    <img src="https://img.shields.io/badge/Cloudflare--Workers-F38020?style=flat-square&logo=cloudflare" alt="Cloudflare Workers">
-  </a>
-  <a href="LICENSE.md">
-    <img src="https://img.shields.io/github/license/pranavajy/burro?style=flat-square&color=blue" alt="License">
-  </a>
+  A visual AI workspace for exploring questions, branching into ideas, and keeping evidence attached.
+</p>
+
+<p align="center">
+  <a href="LICENSE.md"><img src="https://img.shields.io/github/license/pranavajy/burro?style=flat-square&color=8b5cf6" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square&logo=react" alt="React 19">
+  <img src="https://img.shields.io/badge/tldraw-5-18181b?style=flat-square" alt="tldraw 5">
+  <img src="https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square&logo=cloudflare" alt="Cloudflare Workers">
 </p>
 
 ---
 
-Burro is an open-source, full-stack branching conversation canvas that lets you craft, connect, and explore AI-guided dialogues on an infinite workspace. Built on top of **tldraw**, it converts conversation segments into interactive node structures, allowing you to branch prompts, visualize context lineages, and query AI streaming responses in real-time.
+Burro turns linear AI conversations into spatial maps of understanding. Start with a question, branch from any answer or highlighted concept, inspect the sources behind important claims, and keep every useful path visible on an infinite canvas.
 
-## Preview
+## Product preview
 
 <p align="center">
-  <img src="./ui_screenshots/canvas_view.png" alt="Burro Infinite Canvas View" width="800">
+  <img src="./ui_screenshots/landing-canvas-overview.png" alt="A branching Burro research canvas" width="100%">
 </p>
 
 <p align="center">
-  <img src="./ui_screenshots/sidebar_view.png" alt="Burro Side Menu" width="390">
-  <img src="./ui_screenshots/polaroid_cards.png" alt="Wikipedia Polaroid Cards" width="390">
+  <img src="./ui_screenshots/landing-sources-detail.png" alt="A grounded Burro answer with sources expanded" width="49%">
+  <img src="./ui_screenshots/landing-empty-state.png" alt="The Burro new canvas experience" width="49%">
 </p>
 
----
+## What Burro does
 
-## Features
+- **Branching conversations** — Follow up from any completed answer while preserving the full path of context.
+- **Web-grounded responses** — Gemini Google Search grounding provides inline citation markers and source metadata when available.
+- **Evidence inspection** — Expand a compact source section or open connected source cards for important claims.
+- **Concept deep dives** — Click underlined concepts to generate focused child branches automatically.
+- **Visual research cards** — Relevant reference images appear as interactive, previewable photo stacks.
+- **Structured layouts** — Conversation trees flow left-to-right and can be tidied automatically.
+- **Compact mode** — Collapse completed cards into title-only nodes, then expand an individual card on demand.
+- **Persistent canvases** — Local canvas history includes visual thumbnails, search, and recently updated ordering.
+- **Draft-aware history** — Empty new canvases are discarded when you navigate away instead of becoming stray “Untitled” entries.
+- **Canvas tools** — Grab, select, draw, add shapes, highlight, frame, and customize the workspace using the compact dock.
 
-*   **Visual Chat Trees**: Design custom branching conversation threads on an infinite tldraw canvas.
-*   **Context-Aware AI**: The backend automatically tracks parent port lineages to feed structural context into Gemini prompts.
-*   **High-Performance Streaming**: Enjoy instant responses streamed chunk-by-chunk using Vercel AI SDK on Cloudflare Workers edge.
-*   **Wikipedia Polaroid Stack**: Automatically queries matching reference photos in parallel and renders them as hover-interactive fanned cards.
-*   **Sleek Glassmorphic Design**: Clean cards styled with Tailwind CSS v4, dark canvas overlays, custom input controls, and smooth hover micro-animations.
+## Experience
 
----
+### Start cleanly
 
-## Architecture
+New canvases open with a focused composer and prompt starters. Canvas utilities remain hidden until the first question is submitted, keeping the initial state calm and intentional.
 
-Burro uses a decoupled architecture optimized for low-latency visual data orchestration:
+### Explore naturally
 
-### Frontend (`/client`)
-*   **Rendering Core**: Custom tldraw shape utilities (`NodeShapeUtil`) and port connections mapping canvas points.
-*   **Styling**: Powered by Tailwind CSS v4, providing glassmorphic card overlays (`bg-[#1C1C1C] border-[#2C2C2C]`) and custom hover states.
-*   **State Control**: Interactive toolbar custom docked to the bottom center, quick actions docked to the top right, and slide-out setting sheets.
+Hover over a completed card and choose **Ask follow up**, or select an underlined concept to create a deep-dive branch. Burro carries the relevant parent conversation into the new request.
 
-### Backend (`/worker`)
-*   **Edge Compute**: Cloudflare Workers router hosting streaming endpoints.
-*   **AI SDK**: Integrates Vercel AI SDK with Gemini `gemini-3-flash-preview` to stream concise, bolded, bulleted markdown completions.
+### Verify important claims
 
----
+Grounded responses can include citation markers and a centered **View sources** control. Source cards use a secondary dashed connection style so evidence remains visually distinct from the conversation itself.
 
-## Quick Start
+## Tech stack
 
-### 1. Install Dependencies
+| Layer | Technology |
+| --- | --- |
+| UI | React 19, TypeScript, Tailwind CSS v4 |
+| Canvas | tldraw 5 with custom shapes, bindings, ports, and overlays |
+| Motion | Framer Motion |
+| Search UI | cmdk |
+| AI | AI SDK with Google Gemini |
+| Grounding | Gemini Google Search tool |
+| Runtime | Cloudflare Workers |
+| Build | Vite 8 |
 
-Clone the repository and install packages using your package manager:
+## Project structure
+
+```text
+client/
+├── App.tsx                       # Canvas app, sidebar, history, and app chrome
+├── LandingPage.tsx               # Public product landing page
+├── components/WorkflowToolbar.tsx
+├── connection/                   # Custom connection shapes and bindings
+├── nodes/                        # Node utilities, layouts, and creation flows
+│   └── types/
+│       ├── MessageNode.tsx       # Composer, streaming answer, citations, images
+│       └── SourceNode.tsx        # Connected evidence cards
+└── ports/                        # Connection-port interaction state
+
+worker/
+├── worker.ts                     # Streaming AI and grounding endpoints
+└── types.ts                      # Worker environment bindings
+```
+
+## Getting started
+
+### Requirements
+
+- Node.js 20 or newer
+- npm
+- A Google Generative AI API key
+
+### Installation
+
 ```bash
+git clone https://github.com/pranavajy/burro.git
+cd burro
 npm install
 ```
 
-### 2. Environment Configuration
+Create `.env` in the project root:
 
-Create a `.env` file in the project root:
 ```env
-GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_api_key
 ```
-> Get your API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
-### 3. Start Development
+You can create a key in [Google AI Studio](https://aistudio.google.com/apikey).
 
-Run the local development server:
+Start the local development server:
+
 ```bash
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
 
----
+The public landing page is available at `/`. Choose **Open app** or visit `/app` to enter the canvas workspace.
 
-## How to Use
+## Scripts
 
-1.  **Add Message Cards**: Drag the message tool from the bottom center dock onto the canvas.
-2.  **Connect conversation paths**: Hover over the bottom port of a node and drag a connector to the top input port of another node to construct a branch.
-3.  **Prompt & Stream**: Type inside any un-sent card and hit enter to stream the assistant's response. Once sent, the prompt locks as a static reference.
-4.  **Branch Conversations**: Drag from any completed node's bottom port to spawn alternative paths, allowing you to test variations or dive deeper into subtopics.
+```bash
+npm run dev       # Start Vite and the local Cloudflare Worker environment
+npm run build     # Type-check and create a production build
+npm run preview   # Preview the production build locally
+```
 
----
+## How responses work
 
-## Customization
+1. Burro walks the selected node’s parent connections and reconstructs the relevant message history.
+2. The client sends that history to the Worker streaming endpoint.
+3. Gemini generates a concise response and invokes Google Search grounding.
+4. Text is streamed into the card while relevant images are fetched in parallel.
+5. Grounding metadata is normalized into sources and citation ranges for the canvas UI.
 
-### Adding New Node Types
-1.  Define a new schema and component in `client/nodes/types/`.
-2.  Register the model in `NodeDefinitions` in `nodeTypes.tsx`.
-3.  Implement layout functions: `Component`, `getPorts`, `getBodyHeightPx`.
+The response prompt is intentionally optimized for compact visual cards: it targets 70–100 words, preserves essential context, and marks useful concepts for further exploration.
 
-### Switching AI Providers
-Configure `worker/worker.ts` to swap the `@ai-sdk/google` provider with any model supported by the Vercel AI SDK (e.g. `@ai-sdk/openai`, `@ai-sdk/anthropic`).
+## Extending Burro
 
----
+### Add a node type
+
+1. Create its schema, definition, and component in `client/nodes/types/`.
+2. Register it in `client/nodes/nodeTypes.tsx`.
+3. Define its dimensions and ports.
+4. Add any creation and layout behavior required by the conversation tree.
+
+### Change the model or provider
+
+Update `worker/worker.ts` and install the corresponding AI SDK provider package. If the provider exposes different grounding metadata, adapt the evidence normalization in the streaming handler as well.
 
 ## Deployment
 
-Deploy the serverless Edge worker and compile frontend assets:
-```bash
-# Compile and build client
-npm run build
+Build the client and Worker bundle:
 
-# Deploy to Cloudflare Network
+```bash
+npm run build
+```
+
+Deploy with Wrangler after configuring your Cloudflare account, routes, and secret:
+
+```bash
+npx wrangler secret put GOOGLE_GENERATIVE_AI_API_KEY
 npx wrangler deploy
 ```
 
-***
+The asset configuration uses single-page application fallback, so both `/` and `/app` resolve correctly.
 
+## License
+
+[MIT](LICENSE.md)
