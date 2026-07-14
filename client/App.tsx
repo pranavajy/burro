@@ -19,7 +19,7 @@ import { ConnectionCenterHandleOverlayUtil } from './connection/ConnectionCenter
 import { ConnectionShapeUtil } from './connection/ConnectionShapeUtil.tsx'
 import { keepConnectionsAtBottom } from './connection/keepConnectionsAtBottom.tsx'
 import { disableTransparency } from './disableTransparency.tsx'
-import { NodeShapeUtil } from './nodes/NodeShapeUtil.tsx'
+import { NodeShape, NodeShapeUtil } from './nodes/NodeShapeUtil.tsx'
 import { PointingPort } from './ports/PointingPort.tsx'
 
 // Define custom shape utilities that extend tldraw's shape system
@@ -123,16 +123,15 @@ function loadWorkspaces(): Workspace[] {
 	return [{ id: 'workflow', name: 'My canvas', createdAt: now, updatedAt: now }]
 }
 
-function timeAgo(timestamp: number): string {
-	const seconds = Math.floor((Date.now() - timestamp) / 1000)
-	if (seconds < 60) return 'just now'
-	const minutes = Math.floor(seconds / 60)
-	if (minutes < 60) return `${minutes}m ago`
-	const hours = Math.floor(minutes / 60)
-	if (hours < 24) return `${hours}h ago`
-	const days = Math.floor(hours / 24)
-	if (days < 30) return `${days}d ago`
-	return new Date(timestamp).toLocaleDateString()
+function formatUpdated(timestamp: number): string {
+	const date = new Date(timestamp)
+	const now = new Date()
+	const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+	if (date.toDateString() === now.toDateString()) return `Today at ${time}`
+	const yesterday = new Date(now)
+	yesterday.setDate(now.getDate() - 1)
+	if (date.toDateString() === yesterday.toDateString()) return `Yesterday at ${time}`
+	return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${time}`
 }
 
 function App() {
@@ -152,10 +151,15 @@ function App() {
 		localStorage.setItem(CURRENT_WORKSPACE_KEY, currentWorkspaceId)
 	}, [currentWorkspaceId])
 
-	const touchWorkspace = useCallback((id: string) => {
+	const touchWorkspace = useCallback((id: string, preview: WorkspacePreview) => {
 		setWorkspaces((prev) =>
-			prev.map((w) => (w.id === id ? { ...w, updatedAt: Date.now() } : w))
+			prev.map((w) => (w.id === id ? { ...w, updatedAt: Date.now(), preview } : w))
 		)
+	}, [])
+
+	// Refresh a workspace's card preview without bumping its updatedAt
+	const refreshPreview = useCallback((id: string, preview: WorkspacePreview) => {
+		setWorkspaces((prev) => prev.map((w) => (w.id === id ? { ...w, preview } : w)))
 	}, [])
 
 	const createWorkspace = useCallback(() => {
@@ -229,12 +233,18 @@ function App() {
 					// Disable transparency for workflow shapes
 					disableTransparency(editorInstance, ['node', 'connection'])
 
-					// Bump the workspace's updatedAt when the user edits (debounced)
+					// Populate this workspace's sidebar card from the loaded canvas
+					refreshPreview(currentWorkspaceId, getWorkspacePreview(editorInstance))
+
+					// Bump the workspace's updatedAt + preview when the user edits (debounced)
 					let touchTimeout: ReturnType<typeof setTimeout> | undefined
 					editorInstance.store.listen(
 						() => {
 							clearTimeout(touchTimeout)
-							touchTimeout = setTimeout(() => touchWorkspace(currentWorkspaceId), 1000)
+							touchTimeout = setTimeout(
+								() => touchWorkspace(currentWorkspaceId, getWorkspacePreview(editorInstance)),
+								1000
+							)
 						},
 						{ scope: 'document', source: 'user' }
 					)
@@ -299,6 +309,8 @@ function App() {
 				<div className="flex-grow px-3 overflow-y-auto scrollbar-none">
 					{sortedWorkspaces.map((workspace) => {
 						const isActive = workspace.id === currentWorkspaceId
+						const previewImages = workspace.preview?.images ?? []
+						const title = workspace.preview?.title || workspace.name
 						return (
 							<div
 								key={workspace.id}
@@ -306,31 +318,56 @@ function App() {
 									setCurrentWorkspaceId(workspace.id)
 									setIsSidebarOpen(false)
 								}}
-								className={`group flex items-center gap-3 px-3 py-2.5 mb-0.5 rounded-xl cursor-pointer transition-colors ${
-									isActive ? 'bg-[#232326]' : 'hover:bg-[#1E1E21]'
+								className={`group relative mb-3 rounded-2xl border cursor-pointer transition-colors overflow-hidden ${
+									isActive
+										? 'bg-[#1E1E21] border-[#8b5cf6]/40'
+										: 'bg-[#1A1A1D] border-[#26262A] hover:border-[#3A3A3E]'
 								}`}
 							>
-								<span
-									className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-										isActive ? 'bg-[#8b5cf6]' : 'bg-zinc-700'
-									}`}
-								/>
-								<div className="flex flex-col min-w-0 flex-grow">
-									<span
-										className={`text-[13px] font-medium truncate ${
-											isActive ? 'text-zinc-100' : 'text-zinc-400 group-hover:text-zinc-200'
+								{/* Stacked image preview */}
+								{previewImages.length > 0 && (
+									<div className="flex items-center justify-center pt-6 pb-1 h-[128px]">
+										{previewImages.map((url, idx) => (
+											<div
+												key={idx}
+												className="bg-white rounded-2xl p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+												style={{
+													rotate: idx === 0 ? '-4deg' : '6deg',
+													marginLeft: idx === 0 ? 0 : -20,
+													zIndex: idx,
+												}}
+											>
+												<img
+													src={url}
+													alt=""
+													className="w-[80px] h-[80px] object-cover rounded-xl"
+													draggable={false}
+												/>
+											</div>
+										))}
+									</div>
+								)}
+
+								{/* Title + timestamp */}
+								<div className={`px-4 pb-4 text-center ${previewImages.length > 0 ? 'pt-3' : 'pt-4'}`}>
+									<div
+										className={`text-[13.5px] font-semibold truncate ${
+											isActive ? 'text-zinc-100' : 'text-zinc-300 group-hover:text-zinc-100'
 										}`}
 									>
-										{workspace.name}
-									</span>
-									<span className="text-[11px] text-zinc-600">{timeAgo(workspace.updatedAt)}</span>
+										{title}
+									</div>
+									<div className="text-[11px] text-zinc-500 mt-1">
+										Last updated {formatUpdated(workspace.updatedAt)}
+									</div>
 								</div>
+
 								<button
 									onClick={(e) => {
 										e.stopPropagation()
 										deleteWorkspace(workspace.id)
 									}}
-									className="p-1.5 rounded-lg text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-[#2A2A2E] transition-all cursor-pointer"
+									className="absolute top-2 right-2 p-1.5 rounded-lg text-zinc-500 bg-[#161618]/80 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all cursor-pointer"
 									title="Delete canvas"
 								>
 									<Trash2 className="w-3.5 h-3.5" />
