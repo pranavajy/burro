@@ -27,6 +27,7 @@ export const MessageNode = T.object({
 	userMessage: T.string,
 	assistantMessage: T.string,
 	autoSubmit: T.optional(T.boolean),
+	compact: T.optional(T.boolean),
 	grounded: T.optional(T.boolean),
 	sourcesExpanded: T.optional(T.boolean),
 	sources: T.optional(
@@ -72,6 +73,7 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 			assistantMessage: '',
 			images: [],
 			autoSubmit: false,
+			compact: false,
 			grounded: false,
 			sourcesExpanded: false,
 			sources: [],
@@ -79,11 +81,23 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 		}
 	}
 	getBodyWidthPx(_shape: NodeShape, _node: MessageNode): number {
-		return NODE_WIDTH_PX
+		return _node.compact && _node.assistantMessage.trim() ? 380 : NODE_WIDTH_PX
 	}
 	getBodyHeightPx(_shape: NodeShape, _node: MessageNode): number {
 		const assistantMessage = _node.assistantMessage.trim()
 		const isSent = assistantMessage !== ''
+		if (_node.compact && isSent) {
+			const titleSize = this.editor.textMeasure.measureText(_node.userMessage, {
+				fontFamily: 'Inter',
+				fontSize: 15,
+				fontWeight: '500',
+				fontStyle: 'normal',
+				maxWidth: 340,
+				lineHeight: 1.5,
+				padding: '0px',
+			})
+			return Math.max(72, titleSize.h + 36)
+		}
 
 		if (!isSent) {
 			return 260
@@ -124,6 +138,7 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 	}
 	getPorts(shape: NodeShape, node: MessageNode) {
 		const height = this.getBodyHeightPx(shape, node)
+		const width = this.getBodyWidthPx(shape, node)
 		return {
 			input: {
 				...shapeInputPort,
@@ -132,7 +147,7 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 			},
 			output: {
 				...shapeOutputPort,
-				x: NODE_WIDTH_PX,
+				x: width,
 				y: height / 2,
 			},
 		}
@@ -504,6 +519,15 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 		requestAnimationFrame(() => layoutConversationTree(editor, shape.id))
 	}, [editor, shape])
 
+	const handleExpandCard = useCallback(() => {
+		updateNode<MessageNode>(editor, shape, (currentNode) => ({
+			...currentNode,
+			compact: false,
+		}))
+		editor.select(shape.id)
+		requestAnimationFrame(() => layoutConversationTree(editor, shape.id))
+	}, [editor, shape])
+
 	const images = node.images || []
 	const assistantMessage = node.assistantMessage.trim()
 	const isSent = assistantMessage !== ''
@@ -512,6 +536,26 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 	const citations = node.citations ?? []
 	const sourceNumbers = new Map(sources.map((source, index) => [source.id, index + 1]))
 	const citedMessage = addCitationMarkers(node.assistantMessage, citations)
+	const isCompact = Boolean(node.compact && isSent)
+
+	if (isCompact) {
+		return (
+			<motion.div
+				className="group pointer-events-auto h-full w-full cursor-pointer"
+				initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 5 }}
+				animate={{ opacity: 1, scale: 1, y: 0 }}
+				whileHover={shouldReduceMotion ? undefined : { y: -2, scale: 1.01 }}
+				whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
+				transition={{ type: 'spring', stiffness: 430, damping: 32 }}
+				onClick={handleExpandCard}
+				title="Expand card"
+			>
+				<div className="flex h-full w-full items-center overflow-hidden rounded-[22px] border border-white/[0.075] bg-[#19191C]/92 px-5 shadow-[0_14px_38px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+					<div className="w-full text-[15px] font-medium leading-[1.5] tracking-[-0.01em] text-zinc-200">{node.userMessage}</div>
+				</div>
+			</motion.div>
+		)
+	}
 
 	return (
 		<motion.div

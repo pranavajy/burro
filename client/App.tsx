@@ -2,19 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Command } from 'cmdk'
 import {
-	DefaultActionsMenu,
-	DefaultQuickActions,
 	DefaultStylePanel,
 	Editor,
 	TLComponents,
 	Tldraw,
 	TldrawOptions,
-	TldrawUiToolbar,
 	uniqueId,
 	useEditor,
 	useValue,
 } from 'tldraw'
-import { Menu, X, Plus, Trash2, Search } from 'lucide-react'
+import { Menu, PanelLeft, Plus, Trash2, Search, Maximize2, Minimize2 } from 'lucide-react'
 import { overrides, WorkflowToolbar } from './components/WorkflowToolbar.tsx'
 import { ConnectionBindingUtil } from './connection/ConnectionBindingUtil.tsx'
 import { ConnectionShapeUtil } from './connection/ConnectionShapeUtil.tsx'
@@ -60,20 +57,75 @@ const components: TLComponents = {
 }
 
 function CanvasActionsToolbar() {
+	const editor = useEditor()
+	const shouldReduceMotion = useReducedMotion()
+	const compactMode = useValue(
+		'conversation compact mode',
+		() => {
+			const messages = editor
+				.getCurrentPageShapes()
+				.filter((shape): shape is NodeShape => editor.isShapeOfType(shape, 'node'))
+				.filter(
+					(shape) =>
+						shape.props.node.type === 'message' &&
+						shape.props.node.assistantMessage.trim() !== '' &&
+						shape.props.node.assistantMessage.trim() !== '...'
+				)
+			return messages.some((shape) => shape.props.node.type === 'message' && shape.props.node.compact)
+		},
+		[editor]
+	)
+
+	const toggleCompactMode = () => {
+		const updates = editor
+			.getCurrentPageShapes()
+			.filter((shape): shape is NodeShape => editor.isShapeOfType(shape, 'node'))
+			.filter(
+				(shape) =>
+					shape.props.node.type === 'message' &&
+					shape.props.node.assistantMessage.trim() !== '' &&
+					shape.props.node.assistantMessage.trim() !== '...'
+			)
+			.map((shape) => ({
+				id: shape.id,
+				type: 'node' as const,
+				props: { node: { ...shape.props.node, compact: !compactMode } },
+			}))
+		editor.updateShapes(updates)
+		requestAnimationFrame(() => layoutAllConversationTrees(editor, true))
+	}
+
 	return (
-		<div className="fixed right-4 top-4 z-[999] flex items-center gap-1 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
-			<button
+		<div className="fixed right-4 top-4 z-[999] flex items-center gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
+			<motion.button
 				type="button"
 				onClick={() => window.dispatchEvent(new CustomEvent('burro:new-canvas'))}
-				className="flex h-9 items-center gap-2 rounded-[11px] px-3 text-[12px] font-medium tracking-[-0.01em] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+				className="flex h-9 w-9 items-center justify-center rounded-[11px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+				whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}
+				whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
+				transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+				title="New canvas"
+				aria-label="New canvas"
 			>
-				<Plus className="h-3.5 w-3.5" />
-				New canvas
-			</button>
-			<TldrawUiToolbar className="!border-0 !bg-transparent !p-0" label="Canvas actions">
-				<DefaultQuickActions />
-				<DefaultActionsMenu />
-			</TldrawUiToolbar>
+				<Plus className="h-[17px] w-[17px]" />
+			</motion.button>
+			<motion.button
+				type="button"
+				onClick={toggleCompactMode}
+				className={`flex h-9 w-9 items-center justify-center rounded-[11px] transition-colors ${
+					compactMode
+						? 'bg-violet-600 text-white shadow-[0_7px_18px_rgba(109,40,217,0.3),inset_0_1px_0_rgba(255,255,255,0.12)]'
+						: 'text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'
+				}`}
+				whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}
+				whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
+				transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+				title={compactMode ? 'Expand all cards' : 'Compact answered cards'}
+				aria-label={compactMode ? 'Expand all cards' : 'Compact answered cards'}
+				aria-pressed={compactMode}
+			>
+				{compactMode ? <Maximize2 className="h-[17px] w-[17px]" /> : <Minimize2 className="h-[17px] w-[17px]" />}
+			</motion.button>
 		</div>
 	)
 }
@@ -288,17 +340,17 @@ function App() {
 			/>
 
 			{/* Floating canvas menu */}
-			<div className="fixed left-4 top-4 z-[999] pointer-events-auto">
+			<div className="fixed left-4 top-4 z-[999] rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
 				<motion.button
 					onClick={() => setIsSidebarOpen(true)}
-					className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#18181B]/95 text-zinc-400 shadow-[0_12px_35px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-colors hover:border-violet-400/30 hover:text-white"
-					whileHover={shouldReduceMotion ? undefined : { y: -2, scale: 1.04 }}
-					whileTap={shouldReduceMotion ? undefined : { y: 0, scale: 0.95 }}
+					className="flex h-9 w-9 items-center justify-center rounded-[11px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+					whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}
+					whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
 					transition={{ type: 'spring', stiffness: 500, damping: 30 }}
 					title="Open canvases"
 					aria-label="Open canvases"
 				>
-					<Menu className="h-5 w-5" />
+					<Menu className="h-[17px] w-[17px]" />
 				</motion.button>
 			</div>
 
@@ -315,7 +367,7 @@ function App() {
 						/>
 
 						<motion.aside
-							className="fixed inset-y-0 left-0 z-[1001] flex w-80 max-w-[calc(100vw-16px)] flex-col border-r border-[#29292D] bg-[#161618] shadow-[12px_0_36px_rgba(0,0,0,0.38)] pointer-events-auto"
+							className="fixed inset-y-0 left-0 z-[1001] flex w-80 max-w-[calc(100vw-16px)] flex-col border-r border-white/[0.055] bg-[#151517]/94 shadow-[16px_0_48px_rgba(0,0,0,0.46),inset_-1px_0_0_rgba(255,255,255,0.025)] backdrop-blur-2xl pointer-events-auto"
 							initial={shouldReduceMotion ? { opacity: 0 } : { x: '-100%' }}
 							animate={{ opacity: 1, x: 0 }}
 							exit={shouldReduceMotion ? { opacity: 0 } : { x: '-100%' }}
@@ -328,37 +380,41 @@ function App() {
 								</div>
 								<motion.button
 									onClick={() => setIsSidebarOpen(false)}
-									className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-[#242427] hover:text-zinc-100"
+									className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-white/[0.04] hover:text-zinc-400"
 									whileHover={shouldReduceMotion ? undefined : { scale: 1.04 }}
 									whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
 									aria-label="Close canvases"
 								>
-									<X className="h-4 w-4" />
+									<PanelLeft className="h-3.5 w-3.5" />
 								</motion.button>
 							</div>
 
-							<div className="flex gap-2 p-3">
+							<div className="mx-3 mb-3 flex gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl">
 								<motion.button
 									onClick={() => {
 										createWorkspace()
 										setIsSidebarOpen(false)
 									}}
-									className="order-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#303035] bg-[#1D1D20] text-zinc-300 transition-colors hover:bg-[#242427] hover:text-white"
-									whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
+									className="order-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+									whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}
+									whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
 									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
 									title="New canvas"
 									aria-label="New canvas"
 								>
-									<Plus className="h-4 w-4" />
+									<Plus className="h-[17px] w-[17px]" />
 								</motion.button>
 								<motion.button
 									onClick={() => setIsCommandOpen(true)}
-									className="order-1 flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-md border border-[#303035] bg-[#1D1D20] px-3 text-[13px] text-zinc-400 transition-colors hover:bg-[#242427] hover:text-zinc-100"
-									whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
+									className="order-1 flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[11px] px-3 text-[13px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+									whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+									whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.985 }}
+									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
 								>
-									<Search className="h-4 w-4" />
+									<Search className="h-[17px] w-[17px]" />
 									<span className="flex-1 text-left">Search canvases</span>
-									<kbd className="rounded border border-[#35353A] bg-[#1C1C1F] px-1.5 py-0.5 text-[9px] text-zinc-600">⌘K</kbd>
+									<kbd className="rounded-md bg-white/[0.055] px-1.5 py-0.5 text-[9px] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">⌘K</kbd>
 								</motion.button>
 							</div>
 
@@ -385,10 +441,10 @@ function App() {
 														setIsSidebarOpen(false)
 													}
 												}}
-												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-2xl border px-4 pb-4 pt-5 outline-none backdrop-blur-xl transition-[background-color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-white/20 ${
+												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-[15px] border px-4 pb-4 pt-5 outline-none backdrop-blur-2xl transition-[background-color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-violet-400/40 ${
 													isActive
-														? 'border-white/[0.14] bg-white/[0.075] text-zinc-100 shadow-[0_14px_34px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.045)]'
-														: 'border-transparent bg-white/[0.028] text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.025)] hover:bg-white/[0.052] hover:shadow-[0_14px_32px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.04)]'
+														? 'border-white/[0.14] bg-[#1A1A1D]/92 text-zinc-100 shadow-[0_14px_34px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.055)]'
+														: 'border-transparent bg-[#1A1A1D]/58 text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.025)] hover:bg-[#1A1A1D]/88 hover:shadow-[0_14px_32px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.045)]'
 												}`}
 												initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }}
 												animate={{ opacity: 1, x: 0 }}
@@ -433,7 +489,7 @@ function App() {
 														event.stopPropagation()
 														deleteWorkspace(workspace.id)
 													}}
-													className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md bg-black/55 text-zinc-400 opacity-0 shadow-[0_6px_18px_rgba(0,0,0,0.35)] backdrop-blur-md transition-colors group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-300 focus:opacity-100"
+													className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#1A1A1D]/82 text-zinc-500 opacity-0 shadow-[0_8px_22px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl transition-colors group-hover:opacity-100 hover:bg-red-500/15 hover:text-red-300 focus:opacity-100"
 													whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
 													whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }}
 													title="Delete canvas"
