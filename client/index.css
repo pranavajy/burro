@@ -62,6 +62,113 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 	opacity: 1;
 }
 
+/* ---- Burro minimap ---- */
+.tlui-navigation-panel {
+	left: 12px;
+	bottom: 12px;
+	gap: 0;
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.055);
+	border-radius: 15px;
+	background: rgba(26, 26, 29, 0.82);
+	box-shadow:
+		0 12px 32px rgba(0, 0, 0, 0.42),
+		inset 0 1px 0 rgba(255, 255, 255, 0.045);
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+}
+
+.tlui-navigation-panel::before {
+	display: none;
+}
+
+.tlui-navigation-panel:has(.tlui-minimap) {
+	width: 220px;
+}
+
+.tlui-navigation-panel > .tlui-toolbar {
+	display: flex;
+	width: 100%;
+	box-sizing: border-box;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 4px;
+	gap: 1px;
+	background: transparent;
+}
+
+.tlui-navigation-panel > .tlui-toolbar > * {
+	margin: 0;
+}
+
+.tlui-navigation-panel > .tlui-toolbar button.tlui-button__icon {
+	width: 36px;
+	min-width: 36px;
+	height: 36px;
+	padding: 0;
+}
+
+.tlui-navigation-panel > .tlui-toolbar button.tlui-button__icon > .tlui-button__icon {
+	width: 17px;
+	min-width: 17px;
+	height: 17px;
+}
+
+.tlui-navigation-panel > .tlui-toolbar [data-testid='minimap.zoom-menu-button'] {
+	width: auto;
+	min-width: 52px;
+	height: 36px;
+	padding-inline: 8px;
+}
+
+.tlui-navigation-panel .tlui-button {
+	color: #71717a;
+}
+
+.tlui-navigation-panel .tlui-button::after {
+	inset: 4px;
+	border-radius: 11px;
+}
+
+.tlui-navigation-panel .tlui-button:hover {
+	color: #e4e4e7;
+}
+
+.tlui-navigation-panel .tlui-button:hover::after {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.tlui-navigation-panel [data-testid='minimap.zoom-menu-button'] {
+	color: #a1a1aa;
+	font-weight: 500;
+}
+
+.tlui-minimap {
+	height: 112px;
+	min-height: 112px;
+	padding: 5px;
+	padding-top: 0;
+	border-top: 1px solid rgba(255, 255, 255, 0.04);
+	background: transparent;
+}
+
+.tlui-minimap__canvas {
+	box-sizing: border-box;
+	border: 1px solid rgba(255, 255, 255, 0.045);
+	border-radius: 11px;
+	opacity: 0.88;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.025),
+		inset 0 0 22px rgba(0, 0, 0, 0.24);
+	transition: opacity 160ms ease, border-color 160ms ease;
+}
+
+.tlui-minimap__canvas:hover {
+	opacity: 1;
+	border-color: rgba(255, 255, 255, 0.085);
+}
+
 .NodeShape {
 	width: 100%;
 	height: fit-content;
