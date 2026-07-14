@@ -127,6 +127,3 @@ npx wrangler deploy
 
 ***
 
-## License
-
-This project is licensed under the MIT License. The canvas engine is powered by the [tldraw SDK](https://tldraw.dev).
