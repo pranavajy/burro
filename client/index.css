@@ -8,6 +8,21 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 	overscroll-behavior: none;
 }
 
+.tl-background {
+	background-color: #121214 !important;
+	background-image:
+		linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+		linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+	background-size: 32px 32px, 32px 32px, 160px 160px, 160px 160px;
+	background-position: center;
+}
+
+.tl-grid {
+	display: none;
+}
+
 .tl-container {
 	--node-shadows: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 	--node-shadow-border:
@@ -88,6 +103,7 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 
 .tlui-navigation-panel > .tlui-toolbar {
 	display: flex;
+	position: relative;
 	width: 100%;
 	box-sizing: border-box;
 	align-items: center;
@@ -120,6 +136,47 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 	min-width: 52px;
 	height: 36px;
 	padding-inline: 8px;
+}
+
+.tlui-navigation-panel:has(.tlui-minimap)
+	> .tlui-toolbar
+	[data-testid='minimap.toggle-button'] {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 36px;
+	min-width: 36px;
+	height: 36px;
+	margin: 0;
+	padding: 0;
+	border-radius: 11px;
+	background: rgba(255, 255, 255, 0.055);
+	color: #a1a1aa;
+	box-shadow:
+		0 5px 14px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.045);
+	cursor: pointer;
+	transition: color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.tlui-navigation-panel:has(.tlui-minimap)
+	> .tlui-toolbar
+	[data-testid='minimap.toggle-button']::after {
+	display: none;
+}
+
+.tlui-navigation-panel:has(.tlui-minimap)
+	> .tlui-toolbar
+	[data-testid='minimap.toggle-button']:hover {
+	transform: translateY(-1px);
+	background: rgba(255, 255, 255, 0.09);
+	color: #f4f4f5;
+}
+
+.tlui-navigation-panel:has(.tlui-minimap)
+	> .tlui-toolbar
+	[data-testid='minimap.toggle-button']:active {
+	transform: translateY(1px) scale(0.94);
 }
 
 .tlui-navigation-panel .tlui-button {
