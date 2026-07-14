@@ -1,6 +1,6 @@
 # Burro
 
-A visual branching conversation interface — create interactive AI chat trees on an infinite canvas.
+A visual branching conversation interface,create interactive AI chat trees on an infinite canvas.
 
 ## Features
 
