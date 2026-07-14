@@ -664,7 +664,7 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 							</p>
 						</div>
 
-						<div className="relative rounded-[18px] border border-white/[0.08] bg-[#202023] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_28px_rgba(0,0,0,0.2)] transition-colors focus-within:border-violet-500/55">
+						<div className="relative rounded-[18px] border border-white/[0.08] bg-[#202023] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_28px_rgba(0,0,0,0.2)] transition-colors focus-within:border-white/[0.14]">
 							<textarea
 								className="h-[104px] w-full resize-none bg-transparent px-4 pb-12 pt-4 text-[15px] leading-6 text-zinc-100 placeholder-zinc-600 outline-none"
 								placeholder="Ask a question or describe what you want to understand..."

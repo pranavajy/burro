@@ -110,11 +110,28 @@ export function WorkflowToolbar() {
 	const editor = useEditor()
 	const shouldReduceMotion = useReducedMotion()
 	const currentTool = useValue('current workflow tool', () => editor.getCurrentToolId(), [editor])
+	const isInitialCanvas = useValue(
+		'initial canvas dock visibility',
+		() => {
+			const shapes = editor.getCurrentPageShapes()
+			if (shapes.length !== 1) return false
+			const shape = shapes[0]
+			return (
+				editor.isShapeOfType(shape, 'node') &&
+				shape.props.node.type === 'message' &&
+				!shape.props.node.userMessage.trim() &&
+				!shape.props.node.assistantMessage.trim()
+			)
+		},
+		[editor]
+	)
 	const [isExtrasOpen, setIsExtrasOpen] = useState(false)
 
 	useEffect(() => {
 		setIsExtrasOpen(false)
 	}, [currentTool])
+
+	if (isInitialCanvas) return null
 
 	const goToLatestBranch = () => {
 		const leaves = editor

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Command } from 'cmdk'
 import {
+	DefaultNavigationPanel,
 	DefaultStylePanel,
 	Editor,
 	TLComponents,
@@ -39,6 +40,7 @@ const components: TLComponents = {
 	),
 
 	MenuPanel: () => null,
+	NavigationPanel: BurroNavigationPanel,
 	StylePanel: () => {
 		const editor = useEditor()
 		const shouldShowStylePanel = useValue(
@@ -56,9 +58,29 @@ const components: TLComponents = {
 	},
 }
 
+function isInitialCanvas(editor: Editor) {
+	const shapes = editor.getCurrentPageShapes()
+	if (shapes.length !== 1) return false
+	const shape = shapes[0]
+	return (
+		editor.isShapeOfType(shape, 'node') &&
+		shape.props.node.type === 'message' &&
+		!shape.props.node.userMessage.trim() &&
+		!shape.props.node.assistantMessage.trim()
+	)
+}
+
+function BurroNavigationPanel() {
+	const editor = useEditor()
+	const isInitial = useValue('initial canvas navigation visibility', () => isInitialCanvas(editor), [editor])
+	if (isInitial) return null
+	return <DefaultNavigationPanel />
+}
+
 function CanvasActionsToolbar() {
 	const editor = useEditor()
 	const shouldReduceMotion = useReducedMotion()
+	const isInitial = useValue('initial canvas actions visibility', () => isInitialCanvas(editor), [editor])
 	const compactMode = useValue(
 		'conversation compact mode',
 		() => {
@@ -94,6 +116,8 @@ function CanvasActionsToolbar() {
 		editor.updateShapes(updates)
 		requestAnimationFrame(() => layoutAllConversationTrees(editor, true))
 	}
+
+	if (isInitial) return null
 
 	return (
 		<div className="fixed right-4 top-4 z-[999] flex items-center gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
