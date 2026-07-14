@@ -4,6 +4,7 @@ import { T, useEditor } from 'tldraw'
 import { Sparkles, GripVertical, ArrowUp } from 'lucide-react'
 import { NODE_HEIGHT_PX, NODE_WIDTH_PX } from '../../constants'
 import { getAllConnectedNodes } from '../nodePorts'
+import { layoutConversationTree } from '../layoutConversationTree'
 import { NodeShape } from '../NodeShapeUtil'
 import {
 	NodeComponentProps,
@@ -87,11 +88,17 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 		return height + size.h + 48
 	}
 	getPorts(shape: NodeShape, node: MessageNode) {
+		const height = this.getBodyHeightPx(shape, node)
 		return {
-			input: shapeInputPort,
+			input: {
+				...shapeInputPort,
+				x: 0,
+				y: height / 2,
+			},
 			output: {
 				...shapeOutputPort,
-				y: this.getBodyHeightPx(shape, node),
+				x: NODE_WIDTH_PX,
+				y: height / 2,
 			},
 		}
 	}
@@ -250,6 +257,7 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				...prevNode,
 				images,
 			}))
+			layoutConversationTree(editor, shape.id)
 		})
 
 		// stream the response and append as chunks arrive
@@ -284,6 +292,8 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				}
 			} catch (e) {
 				console.error(e)
+			} finally {
+				layoutConversationTree(editor, shape.id)
 			}
 		})()
 	}, [editor, shape, node.userMessage])

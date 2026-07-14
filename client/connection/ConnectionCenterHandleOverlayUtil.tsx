@@ -72,7 +72,7 @@ export class ConnectionCenterHandleOverlayUtil extends OverlayUtil<TLConnectionC
 	override onPointerDown(overlay: TLConnectionCenterHandleOverlay, _info: TLPointerEventInfo) {
 		const connection = this.editor.getShape<ConnectionShape>(overlay.props.shapeId)
 		if (!connection) return false
-		insertNodeWithinConnection(this.editor, connection, 'vertical')
+		insertNodeWithinConnection(this.editor, connection, 'horizontal')
 	}
 
 	override render(

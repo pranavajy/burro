@@ -1,6 +1,7 @@
-import { Box, createShapeId, Editor, TLShapeId } from 'tldraw'
+import { createShapeId, Editor } from 'tldraw'
 import { DEFAULT_NODE_SPACING_PX, NODE_HEIGHT_PX, NODE_WIDTH_PX } from '../constants'
-import { getNodePortConnections, getNodePorts } from '../nodes/nodePorts'
+import { layoutConversationTree } from '../nodes/layoutConversationTree'
+import { getNodePorts } from '../nodes/nodePorts'
 import { createOrUpdateConnectionBinding, getConnectionBindings } from './ConnectionBindingUtil'
 import { ConnectionShape } from './ConnectionShapeUtil'
 
@@ -90,120 +91,13 @@ export function insertNodeWithinConnection(
 		terminal: 'end',
 	})
 
-	// move around any connected nodes to make room for the new one
-	moveNodesIfNeeded(editor, newNodeId, originalBindings.end.toId, direction)
+	// Reflow the whole conversation instead of locally nudging one card. This
+	// keeps sibling branches aligned even when the inserted card is very tall.
+	layoutConversationTree(editor, newNodeId)
 
 	// select the new node
 	editor.select(newNodeId)
 
 	// update the pointer so that e.g. the editor's internal hovered shape id is correct
 	editor.updatePointer()
-}
-
-/**
- * Move around any connected nodes to make room for the new node.
- *
- * This is used when the user inserts a node in the middle of a connection.
- */
-function moveNodesIfNeeded(
-	editor: Editor,
-	newNodeId: TLShapeId,
-	rootNodeId: TLShapeId,
-	direction: 'horizontal' | 'vertical'
-) {
-	const rootNode = editor.getShape(rootNodeId)
-	const newNode = editor.getShape(newNodeId)
-	if (
-		!rootNode ||
-		!newNode ||
-		!editor.isShapeOfType(rootNode, 'node') ||
-		!editor.isShapeOfType(newNode, 'node')
-	) {
-		return
-	}
-
-	// first, we need to nudge all the downstream nodes to make room for the new node.
-	// toNudge tracks all the nodes we need to nudge.
-	const toNudge = new Map<
-		TLShapeId,
-		{ initialX: number; initialY: number; amountX: number; amountY: number }
-	>()
-
-	// we start with the expanded bounds of the newly added node:
-	const newNodeBounds = editor.getShapePageBounds(newNodeId)!.clone()
-	visit(rootNodeId, newNodeBounds.expandBy(DEFAULT_NODE_SPACING_PX))
-
-	function visit(nodeId: TLShapeId, parentExpandedBounds: Box) {
-		const node = editor.getShape(nodeId)
-		if (!node || !editor.isShapeOfType(node, 'node')) return
-
-		// if this node has already been visited, we need to continue on from the nudge we
-		// calculated last time:
-		const currentNudge = toNudge.get(nodeId) ?? {
-			initialX: node.x,
-			initialY: node.y,
-			amountX: 0,
-			amountY: 0,
-		}
-		const nodeBounds = editor
-			.getShapePageBounds(nodeId)!
-			.clone()
-			.translate({ x: currentNudge.amountX, y: currentNudge.amountY })
-
-		// if this node isn't colliding with the expanded parent node, it's already far enough away
-		// and we don't need to do anything!
-		if (!nodeBounds.collides(parentExpandedBounds)) {
-			return
-		}
-
-		// we need to nudge this node to make room for the new node.
-		// direction determines whether we nudge horizontally or vertically
-		let newNudgeAmountX = 0
-		let newNudgeAmountY = 0
-
-		if (direction === 'horizontal') {
-			// nudge to the right for horizontal layout
-			newNudgeAmountX = parentExpandedBounds.right - nodeBounds.left
-		} else {
-			// nudge downward for vertical layout
-			newNudgeAmountY = parentExpandedBounds.bottom - nodeBounds.top
-		}
-
-		toNudge.set(nodeId, {
-			initialX: currentNudge.initialX,
-			initialY: currentNudge.initialY,
-			amountX: currentNudge.amountX + newNudgeAmountX,
-			amountY: currentNudge.amountY + newNudgeAmountY,
-		})
-
-		// now, we traverse the downstream connections from this node and nudge them all if needed.
-		nodeBounds
-			.translate({ x: newNudgeAmountX, y: newNudgeAmountY })
-			.expandBy(DEFAULT_NODE_SPACING_PX)
-		for (const connection of Object.values(getNodePortConnections(editor, node))) {
-			if (!connection || connection.terminal !== 'start') continue
-			visit(connection.connectedShapeId, nodeBounds)
-		}
-	}
-
-	editor
-		// hide the new node for the purposes of the animation
-		.updateShape({ id: newNodeId, type: 'node', opacity: 0 })
-		// animate the new node fading in, and all the other nodes to their new positions
-		.animateShapes(
-			[
-				{
-					id: newNodeId,
-					type: 'node',
-					opacity: 1,
-				},
-				...Array.from(toNudge.entries()).map(([id, nudge]) => ({
-					id,
-					type: 'node' as const,
-					x: nudge.initialX + nudge.amountX,
-					y: nudge.initialY + nudge.amountY,
-				})),
-			],
-			{ animation: { duration: 100 } }
-		)
 }

@@ -7,3 +7,8 @@ export const NODE_HEIGHT_PX = 80
 export const PORT_RADIUS_PX = 6
 
 export const DEFAULT_NODE_SPACING_PX = 60
+
+// Conversation trees flow from left to right. Keep enough room for the
+// connector curve between columns, and a smaller gap between sibling cards.
+export const TREE_COLUMN_GAP_PX = 120
+export const TREE_BRANCH_GAP_PX = 72

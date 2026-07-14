@@ -20,6 +20,7 @@ import { ConnectionShapeUtil } from './connection/ConnectionShapeUtil.tsx'
 import { keepConnectionsAtBottom } from './connection/keepConnectionsAtBottom.tsx'
 import { disableTransparency } from './disableTransparency.tsx'
 import { NodeShape, NodeShapeUtil } from './nodes/NodeShapeUtil.tsx'
+import { layoutAllConversationTrees } from './nodes/layoutConversationTree.ts'
 import { PointingPort } from './ports/PointingPort.tsx'
 
 // Define custom shape utilities that extend tldraw's shape system
@@ -232,6 +233,9 @@ function App() {
 
 					// Disable transparency for workflow shapes
 					disableTransparency(editorInstance, ['node', 'connection'])
+
+					// Normalize canvases saved before structured conversation layout was added.
+					layoutAllConversationTrees(editorInstance)
 
 					// Populate this workspace's sidebar card from the loaded canvas
 					refreshPreview(currentWorkspaceId, getWorkspacePreview(editorInstance))

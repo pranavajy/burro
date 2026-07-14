@@ -21,6 +21,7 @@ import {
 	vecModelValidator,
 } from 'tldraw'
 import { getAllConnectedNodes, getNodePorts } from '../nodes/nodePorts'
+import { layoutConversationTree } from '../nodes/layoutConversationTree'
 import { getPortAtPoint } from '../ports/getPortAtPoint'
 import { updatePortState } from '../ports/portState'
 import {
@@ -95,7 +96,7 @@ export class ConnectionShapeUtil extends ShapeUtil<ConnectionShape> {
 	// Define the geometry of our connection shape as a cubic bezier curve
 	getGeometry(connection: ConnectionShape) {
 		const { start, end } = getConnectionTerminals(this.editor, connection)
-		const [cp1, cp2] = getConnectionControlPoints(start, end, 'vertical')
+		const [cp1, cp2] = getConnectionControlPoints(start, end, 'horizontal')
 		return new CubicBezier2d({
 			start: Vec.From(start),
 			cp1: Vec.From(cp1),
@@ -211,6 +212,7 @@ export class ConnectionShapeUtil extends ShapeUtil<ConnectionShape> {
 		// if we successfully connected & now have a binding, we're done!
 		const bindings = getConnectionBindings(this.editor, connection)
 		if (bindings[draggingTerminal]) {
+			layoutConversationTree(this.editor, bindings[draggingTerminal]!.toId)
 			return
 		}
 
@@ -247,6 +249,7 @@ export class ConnectionShapeUtil extends ShapeUtil<ConnectionShape> {
 					portId: firstInputPort.id,
 					terminal: draggingTerminal,
 				})
+				layoutConversationTree(this.editor, newNodeId)
 			}
 		} else {
 			// if we're not creating a new connection and we just let go, there must be bindings. If
@@ -299,7 +302,7 @@ export function getConnectionPageCenter(editor: Editor, connection: ConnectionSh
 	const startPage = getConnectionBindingPositionInPageSpace(editor, bindings.start)
 	const endPage = getConnectionBindingPositionInPageSpace(editor, bindings.end)
 	if (!startPage || !endPage) return null
-	const [cp1, cp2] = getConnectionControlPoints(startPage, endPage, 'vertical')
+	const [cp1, cp2] = getConnectionControlPoints(startPage, endPage, 'horizontal')
 	// Cubic bezier midpoint at t=0.5: (P0 + 3·P1 + 3·P2 + P3) / 8
 	return new Vec(
 		(startPage.x + 3 * cp1.x + 3 * cp2.x + endPage.x) / 8,
@@ -327,7 +330,7 @@ function getConnectionControlPoints(start: VecLike, end: VecLike, dir = 'horizon
 }
 
 // Generate SVG path for the connection
-function getConnectionPath(start: VecLike, end: VecLike, dir = 'vertical') {
+function getConnectionPath(start: VecLike, end: VecLike, dir = 'horizontal') {
 	const [cp1, cp2] = getConnectionControlPoints(start, end, dir)
 	return `M ${start.x} ${start.y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${end.x} ${end.y}`
 }

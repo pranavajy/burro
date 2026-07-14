@@ -1,7 +1,8 @@
 import { createShapeId, StateNode, TLPointerEventInfo, TLShapeId } from 'tldraw'
 import { createOrUpdateConnectionBinding } from '../connection/ConnectionBindingUtil.tsx'
 import { getNextConnectionIndex } from '../connection/keepConnectionsAtBottom.tsx'
-import { DEFAULT_NODE_SPACING_PX, NODE_WIDTH_PX } from '../constants.tsx'
+import { TREE_COLUMN_GAP_PX } from '../constants.tsx'
+import { layoutConversationTree } from '../nodes/layoutConversationTree.ts'
 import { getNodePortConnections, getNodePorts } from '../nodes/nodePorts.tsx'
 import { PortId } from './Port.tsx'
 
@@ -99,20 +100,15 @@ export class PointingPort extends StateNode {
 		// Only handle clicks on start ports (output ports)
 		if (this.info?.terminal !== 'start') return
 
-		// Don't create new connections if one already exists
-		const hasExistingConnection = getNodePortConnections(this.editor, this.info!.shapeId).find(
-			(c) => c.ownPortId === this.info!.portId
-		)
-		if (hasExistingConnection) return
-
 		// Get the bounds of the source node
 		const bounds = this.editor.getShapePageBounds(this.info!.shapeId)
 		if (!bounds) return
 
-		// Calculate position for new node to the right of the source node
+		// Seed the card in the next tree column. The full tree layout below will
+		// centre it among any existing siblings.
 		const targetPositionInPageSpace = {
-			x: bounds.midX,
-			y: bounds.bottom + DEFAULT_NODE_SPACING_PX,
+			x: bounds.right + TREE_COLUMN_GAP_PX,
+			y: bounds.midY,
 		}
 
 		// Create a connection shape
@@ -132,9 +128,10 @@ export class PointingPort extends StateNode {
 		})
 
 		// Position the connection end point where the new node will be
-		const targetPositionInConnectionSpace = this.editor
-			.getPointInShapeSpace(connectionShapeId, targetPositionInPageSpace)
-			.addXY(0, 200)
+		const targetPositionInConnectionSpace = this.editor.getPointInShapeSpace(
+			connectionShapeId,
+			targetPositionInPageSpace
+		)
 
 		this.editor.updateShape({
 			id: connectionShapeId,
@@ -148,8 +145,8 @@ export class PointingPort extends StateNode {
 		this.editor.createShape({
 			type: 'node',
 			id: newNodeId,
-			x: targetPositionInPageSpace.x - NODE_WIDTH_PX / 2,
-			y: targetPositionInPageSpace.y + 100,
+			x: targetPositionInPageSpace.x,
+			y: targetPositionInPageSpace.y,
 			props: {
 				node: { type: 'message', userMessage: '', assistantMessage: '' },
 			},
@@ -172,6 +169,8 @@ export class PointingPort extends StateNode {
 				portId: firstInputPort.id,
 				terminal: 'end',
 			})
+
+			layoutConversationTree(this.editor, this.info!.shapeId)
 		}
 	}
 }
