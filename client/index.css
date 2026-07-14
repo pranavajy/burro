@@ -1,7 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('tldraw/tldraw.css');
+@import "tailwindcss";
 
-body {
+body, .tl-container, .tl-canvas, .tl-theme__dark {
+	background-color: #141414 !important;
 	font-family: 'Inter', sans-serif;
 	overscroll-behavior: none;
 }
@@ -23,23 +25,10 @@ body {
 }
 
 .NodeShape {
-	border-radius: var(--tl-radius-3);
-	background: var(--tl-color-panel);
-	box-shadow: var(--node-shadow-border);
 	width: 100%;
 	height: fit-content;
 	display: flex;
 	flex-direction: column;
-
-	.NodeShape-heading {
-		padding: 0 var(--tl-space-4);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--tl-space-4);
-		height: 40px;
-		margin-bottom: var(--tl-space-2);
-	}
 }
 
 .Port {
@@ -83,4 +72,8 @@ body {
 .ConnectionShapeIndicator {
 	stroke-width: 2.1px;
 	stroke-linecap: round;
+}
+
+.tlui-watermark {
+	display: none !important;
 }

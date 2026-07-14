@@ -1,8 +1,7 @@
 import { ModelMessage } from 'ai'
 import { useCallback } from 'react'
-import { T, TldrawUiButton, TldrawUiButtonIcon, TldrawUiInput, useEditor } from 'tldraw'
-import { HandleIcon } from '../../components/icons/HandleIcon'
-import { SendIcon } from '../../components/icons/SendIcon'
+import { T, useEditor } from 'tldraw'
+import { Sparkles, GripVertical, ArrowUp } from 'lucide-react'
 import { NODE_HEIGHT_PX, NODE_WIDTH_PX } from '../../constants'
 import { getAllConnectedNodes } from '../nodePorts'
 import { NodeShape } from '../NodeShapeUtil'
@@ -37,7 +36,7 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 	static validator = MessageNode
 	title = 'Message'
 	heading = 'Message'
-	icon = <SendIcon />
+	icon = <Sparkles className="w-4 h-4 text-blue-400" />
 	getDefault(): MessageNode {
 		return {
 			type: 'message',
@@ -50,23 +49,42 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 		return NODE_WIDTH_PX
 	}
 	getBodyHeightPx(_shape: NodeShape, _node: MessageNode): number {
-		let height = NODE_HEIGHT_PX
+		const assistantMessage = _node.assistantMessage.trim()
+		const isSent = assistantMessage !== ''
+
+		if (!isSent) {
+			return NODE_HEIGHT_PX
+		}
+
+		let height = 36 // Header height
+
 		const images = _node.images || []
 		if (images.length > 0) {
-			height += 120
+			height += 200 // fanned image stack section
 		}
-		const assistantMessage = _node.assistantMessage.trim()
-		if (assistantMessage === '') return height
+
+		// Measure user message text height (since it's static/read-only now)
+		const userSize = this.editor.textMeasure.measureText(_node.userMessage, {
+			fontFamily: 'Inter',
+			fontSize: 17,
+			fontWeight: '600',
+			fontStyle: 'normal',
+			maxWidth: NODE_WIDTH_PX - 56, // px-7 = 56px horizontal padding
+			lineHeight: 1.4,
+			padding: '0px',
+		})
+		height += userSize.h + 32 // height + vertical padding
+
 		const size = this.editor.textMeasure.measureText(assistantMessage, {
 			fontFamily: 'Inter',
-			fontSize: 12,
+			fontSize: 13,
 			fontWeight: '500',
 			fontStyle: 'normal',
-			maxWidth: NODE_WIDTH_PX,
-			lineHeight: 1.3,
-			padding: '12px',
+			maxWidth: NODE_WIDTH_PX - 56, // px-7 = 56px horizontal padding
+			lineHeight: 1.6,
+			padding: '0px',
 		})
-		return height + size.h
+		return height + size.h + 48
 	}
 	getPorts(shape: NodeShape, node: MessageNode) {
 		return {
@@ -119,7 +137,11 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
 	const parts = text.split('**')
 	return parts.map((part, index) => {
 		if (index % 2 === 1) {
-			return <strong key={index} style={{ fontWeight: 'bold', color: 'var(--tl-color-text, #ffffff)' }}>{part}</strong>
+			return (
+				<strong key={index} className="font-bold text-zinc-50">
+					{part}
+				</strong>
+			)
 		}
 		return part
 	})
@@ -130,21 +152,21 @@ function parseMarkdown(text: string): React.ReactNode {
 	return lines.map((line, idx) => {
 		if (line.startsWith('### ')) {
 			return (
-				<h3 key={idx} style={{ fontSize: '13px', fontWeight: 'bold', margin: '8px 0 4px 0', borderBottom: '1px solid var(--tl-color-divider, #3f3f46)', paddingBottom: '2px', color: 'var(--tl-color-text)' }}>
+				<h3 key={idx} className="text-[14px] font-semibold text-zinc-100 mt-3 mb-1">
 					{renderInlineMarkdown(line.slice(4))}
 				</h3>
 			)
 		}
 		if (line.startsWith('## ')) {
 			return (
-				<h2 key={idx} style={{ fontSize: '14px', fontWeight: 'bold', margin: '12px 0 6px 0', borderBottom: '1px solid var(--tl-color-divider, #3f3f46)', paddingBottom: '2px', color: 'var(--tl-color-text)' }}>
+				<h2 key={idx} className="text-[15px] font-semibold text-zinc-100 mt-4 mb-1.5">
 					{renderInlineMarkdown(line.slice(3))}
 				</h2>
 			)
 		}
 		if (line.startsWith('# ')) {
 			return (
-				<h1 key={idx} style={{ fontSize: '15px', fontWeight: 'bold', margin: '14px 0 8px 0', color: 'var(--tl-color-text)' }}>
+				<h1 key={idx} className="text-[16px] font-bold text-zinc-100 mt-4 mb-2">
 					{renderInlineMarkdown(line.slice(2))}
 				</h1>
 			)
@@ -153,8 +175,8 @@ function parseMarkdown(text: string): React.ReactNode {
 		const matchOrdered = line.match(/^(\d+)\.\s+(.*)$/)
 		if (matchOrdered) {
 			return (
-				<div key={idx} style={{ display: 'flex', gap: '6px', margin: '3px 0 3px 8px', fontSize: '11.5px', lineHeight: '1.4', color: 'var(--tl-color-text)' }}>
-					<span style={{ fontWeight: 'bold', minWidth: '14px' }}>{matchOrdered[1]}.</span>
+				<div key={idx} className="flex gap-2.5 my-1.5 ml-1 text-[13px] leading-[1.6] text-zinc-300">
+					<span className="text-zinc-500 min-w-[16px] text-right">{matchOrdered[1]}.</span>
 					<span>{renderInlineMarkdown(matchOrdered[2])}</span>
 				</div>
 			)
@@ -162,19 +184,19 @@ function parseMarkdown(text: string): React.ReactNode {
 
 		if (line.startsWith('- ') || line.startsWith('* ')) {
 			return (
-				<div key={idx} style={{ display: 'flex', gap: '6px', margin: '3px 0 3px 8px', fontSize: '11.5px', lineHeight: '1.4', color: 'var(--tl-color-text)' }}>
-					<span style={{ fontWeight: 'bold' }}>•</span>
+				<div key={idx} className="flex gap-2.5 my-1.5 ml-1 text-[13px] leading-[1.6] text-zinc-300">
+					<span className="text-zinc-500">•</span>
 					<span>{renderInlineMarkdown(line.slice(2))}</span>
 				</div>
 			)
 		}
 
 		if (line.trim() === '') {
-			return <div key={idx} style={{ height: '6px' }} />
+			return <div key={idx} className="h-2.5" />
 		}
 
 		return (
-			<p key={idx} style={{ margin: '3px 0', fontSize: '11.5px', lineHeight: '1.4', color: 'var(--tl-color-text)' }}>
+			<p key={idx} className="my-1.5 text-[13px] leading-[1.6] text-zinc-300">
 				{renderInlineMarkdown(line)}
 			</p>
 		)
@@ -277,66 +299,36 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 	)
 
 	const images = node.images || []
+	const assistantMessage = node.assistantMessage.trim()
+	const isSent = assistantMessage !== ''
 
 	return (
 		<>
 			<div
-				style={{
-					pointerEvents: 'auto',
-					display: 'flex',
-					flexDirection: 'column',
-				}}
+				className="pointer-events-auto flex flex-col w-full h-full bg-[#161618] border border-[#2C2C2E] rounded-[28px] shadow-[0_16px_50px_rgba(0,0,0,0.55)] overflow-hidden"
+				style={{ pointerEvents: 'auto' }}
 			>
-				{/* Images section */}
+				{/* Header grab bar - NO pointer down handler to allow dragging through tldraw bubbling */}
+				<div
+					className="flex items-center justify-end px-3.5 py-1.5 cursor-grab active:cursor-grabbing select-none"
+				>
+					<GripVertical className="w-3.5 h-3.5 text-zinc-600 hover:text-zinc-400 transition-colors" />
+				</div>
+
+				{/* Images: overlapping fanned photo stack */}
 				{images.length > 0 && (
-					<div
-						style={{
-							display: 'flex',
-							flexDirection: 'row',
-							gap: '16px',
-							padding: '16px 20px 8px 20px',
-							overflowX: 'auto',
-							alignItems: 'center',
-							height: '120px',
-							boxSizing: 'border-box',
-							scrollbarWidth: 'none',
-						}}
-					>
+					<div className="flex flex-row justify-center items-center h-[200px] px-7 pt-2 box-border">
 						{images.map((img, idx) => {
-							const rotations = ['-3deg', '2deg', '-1.5deg']
+							const rotations = ['-6deg', '2deg', '5deg']
 							const rotation = rotations[idx % rotations.length]
 							return (
 								<div
 									key={idx}
+									className="group relative shrink-0 bg-white rounded-2xl p-2 shadow-[0_10px_30px_rgba(0,0,0,0.45)] cursor-pointer transition-all duration-300 ease-out hover:scale-110 hover:-translate-y-2 hover:!rotate-0 hover:z-10"
 									style={{
-										width: '85px',
-										height: '90px',
-										flexShrink: 0,
-										background: 'rgba(30, 30, 35, 0.75)',
-										backdropFilter: 'blur(12px)',
-										WebkitBackdropFilter: 'blur(12px)',
-										border: '1px solid rgba(255, 255, 255, 0.08)',
-										borderRadius: '10px',
-										padding: '6px',
-										boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-										display: 'flex',
-										flexDirection: 'column',
-										cursor: 'pointer',
-										transform: `rotate(${rotation})`,
-										transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s ease, box-shadow 0.2s ease',
-										boxSizing: 'border-box',
-									}}
-									onMouseEnter={(e) => {
-										e.currentTarget.style.transform = 'scale(1.22) rotate(0deg) translateY(-4px)'
-										e.currentTarget.style.zIndex = '10'
-										e.currentTarget.style.borderColor = 'var(--tl-color-selected, #2f80ed)'
-										e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.4), 0 0 12px rgba(47, 128, 237, 0.3)'
-									}}
-									onMouseLeave={(e) => {
-										e.currentTarget.style.transform = `rotate(${rotation})`
-										e.currentTarget.style.zIndex = 'auto'
-										e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
-										e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
+										rotate: rotation,
+										marginLeft: idx === 0 ? 0 : -28,
+										zIndex: idx,
 									}}
 									onClick={() => {
 										const searchUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(img.title)}`
@@ -344,34 +336,11 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 									}}
 									title={img.title}
 								>
-									<div
-										style={{
-											fontSize: '7.5px',
-											fontWeight: 700,
-											color: 'rgba(255, 255, 255, 0.9)',
-											textAlign: 'center',
-											whiteSpace: 'nowrap',
-											overflow: 'hidden',
-											textOverflow: 'ellipsis',
-											marginBottom: '4px',
-											width: '100%',
-											textTransform: 'uppercase',
-											letterSpacing: '0.03em',
-										}}
-									>
-										{img.title}
-									</div>
 									<img
 										src={img.url}
 										alt={img.title}
-										style={{
-											flexGrow: 1,
-											width: '100%',
-											height: '0',
-											objectFit: 'cover',
-											borderRadius: '6px',
-											border: '1px solid rgba(255, 255, 255, 0.05)',
-										}}
+										className="w-[128px] h-[148px] object-cover rounded-xl"
+										draggable={false}
 									/>
 								</div>
 							)
@@ -379,58 +348,45 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 					</div>
 				)}
 
-				<div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+				{/* User Message (Static / Read-only after send, editable before send) */}
+				{isSent ? (
 					<div
-						style={{
-							height: '100%',
-							width: 32,
-							paddingLeft: 4,
-							display: 'flex',
-							justifyContent: 'center',
-							alignItems: 'center',
-							cursor: 'grab',
-						}}
-					>
-						<TldrawUiButtonIcon icon={<HandleIcon />} />
-					</div>
-					<div
-						style={{ padding: '4px 0px 0px 4px', flexGrow: 2 }}
+						className="px-7 pt-5 pb-3 text-[17px] font-semibold leading-[1.4] text-zinc-100 select-text"
 						onPointerDown={editor.markEventAsHandled}
 					>
-						<div style={{ padding: '0px 12px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-							<TldrawUiInput
+						{node.userMessage}
+					</div>
+				) : (
+					/* User Message Input */
+					<div className="flex items-center gap-2 px-4 pb-4 pt-1" onPointerDown={editor.markEventAsHandled}>
+						<div className="relative flex-grow flex items-center bg-[#1E1E20] border border-[#2C2C2E] focus-within:border-[#4A4A4E] rounded-2xl transition-all w-full">
+							<input
+								type="text"
+								className="w-full bg-transparent border-0 py-3 pl-4 pr-12 text-[14px] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-0"
+								placeholder="Ask or branch conversation..."
 								value={node.userMessage}
-								onValueChange={handleMessageChange}
-								onComplete={handleSend}
+								onChange={(e) => handleMessageChange(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter') {
+										handleSend()
+									}
+								}}
 							/>
+							<button
+								onClick={handleSend}
+								disabled={!node.userMessage.trim()}
+								className="absolute right-2 p-2 rounded-xl bg-zinc-100 hover:bg-white disabled:bg-transparent text-zinc-900 disabled:text-zinc-600 transition-all duration-200"
+							>
+								<ArrowUp className="w-4 h-4" />
+							</button>
 						</div>
 					</div>
-					<div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0px 0px' }}>
-						<TldrawUiButton
-							type="primary"
-							onClick={handleSend}
-							onPointerDown={editor.markEventAsHandled}
-						>
-							<TldrawUiButtonIcon icon={<SendIcon />} />
-						</TldrawUiButton>
-					</div>
-				</div>
+				)}
+
+				{/* AI Response output - shows full text content without overflow scroll constraints */}
 				{node.assistantMessage && (
-					<div style={{ padding: 4 }}>
-						<div
-							style={{
-								padding: '8px 12px',
-								lineHeight: '1.4',
-								fontSize: '12px',
-								borderRadius: 6,
-								border: '1px solid var(--tl-color-divider, #3f3f46)',
-								fontWeight: '500',
-								fontFamily: 'Inter',
-								overflowWrap: 'break-word',
-								color: 'var(--tl-color-text)',
-								background: 'var(--tl-color-panel-2, rgba(0, 0, 0, 0.02))',
-							}}
-						>
+					<div className="px-7 pb-6">
+						<div className="text-[13px] leading-[1.6] text-zinc-300 font-normal font-sans antialiased">
 							{parseMarkdown(node.assistantMessage)}
 						</div>
 					</div>

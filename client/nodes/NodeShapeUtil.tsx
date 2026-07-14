@@ -12,7 +12,7 @@ import {
 	useEditor,
 	useValue,
 } from 'tldraw'
-import { NODE_WIDTH_PX, PORT_RADIUS_PX } from '../constants'
+import { PORT_RADIUS_PX } from '../constants'
 import { Port } from '../ports/Port'
 import { getNodePorts } from './nodePorts'
 import {
@@ -110,9 +110,8 @@ export class NodeShapeUtil extends ShapeUtil<NodeShape> {
 	}
 
 	getIndicatorPath(shape: NodeShape) {
-		const height = getNodeHeightPx(this.editor, shape)
+		// no rect around the card body — selection highlight is intentionally hidden
 		const path = new Path2D()
-		path.rect(0, 0, NODE_WIDTH_PX, height)
 		const ports = getNodePorts(this.editor, shape)
 		for (const port of Object.values(ports)) {
 			path.moveTo(port.x + PORT_RADIUS_PX, port.y)
