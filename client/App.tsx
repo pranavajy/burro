@@ -296,13 +296,18 @@ function App() {
 				onMount={(editorInstance) => {
 					;(window as any).editor = editorInstance
 					if (!editorInstance.getCurrentPageShapes().some((s) => s.type === 'node')) {
-						editorInstance.createShape({ type: 'node', x: 200, y: 200 })
+						const viewportCenter = editorInstance.getViewportPageBounds().center
+						editorInstance.createShape({
+							type: 'node',
+							x: viewportCenter.x - 280,
+							y: viewportCenter.y - 215,
+						})
 					}
 
 					editorInstance.user.updateUserPreferences({ isSnapMode: true, colorScheme: 'dark' })
 
-					// Figma-style dot grid background
-					editorInstance.updateInstanceState({ isGridMode: true })
+					// Burro uses its own restrained line grid rather than tldraw's dot layer.
+					editorInstance.updateInstanceState({ isGridMode: false })
 
 					// Add our custom pointing port tool to the select tool's state machine
 					// This allows users to create connections by pointing at ports

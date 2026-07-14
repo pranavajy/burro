@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { T, useEditor } from 'tldraw'
-import { BookOpen, ExternalLink, Plus, Sparkles, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Compass, ExternalLink, Library, Plus, Route, Scale, Sparkles, X } from 'lucide-react'
 import { NODE_WIDTH_PX } from '../../constants'
 import { createFollowUpNode } from '../createFollowUpNode'
 import { createSourceCard } from '../createSourceCard'
@@ -100,7 +100,10 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 		}
 
 		if (!isSent) {
-			return 260
+			const hasParent = getNodePortConnections(this.editor, _shape).some(
+				(connection) => connection.terminal === 'end'
+			)
+			return hasParent ? 260 : 430
 		}
 
 		let height = 36 // Header height
@@ -326,6 +329,9 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 	const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null)
 	const [isCardHovered, setIsCardHovered] = useState(false)
 	const [highlightedSourceIds, setHighlightedSourceIds] = useState<string[]>([])
+	const isRootComposer =
+		!node.assistantMessage.trim() &&
+		!getNodePortConnections(editor, shape).some((connection) => connection.terminal === 'end')
 
 	useEffect(() => {
 		if (!previewImage) return
@@ -483,6 +489,17 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 		handleMessageChange('')
 	}, [editor, shape, handleMessageChange])
 
+	const handleStarterPrompt = useCallback(
+		(prompt: string) => {
+			updateNode<MessageNode>(editor, shape, (currentNode) => ({
+				...currentNode,
+				userMessage: prompt,
+				autoSubmit: true,
+			}))
+		},
+		[editor, shape]
+	)
+
 	const handleFollowUp = useCallback(() => {
 		createFollowUpNode(editor, shape.id)
 	}, [editor, shape.id])
@@ -634,6 +651,69 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 						onPointerDown={editor.markEventAsHandled}
 					>
 						{node.userMessage}
+					</div>
+				) : isRootComposer ? (
+					/* First-run / new-canvas composer */
+					<div className="flex h-full flex-col p-7" onPointerDown={editor.markEventAsHandled}>
+						<div className="mb-5">
+							<h1 className="text-[25px] font-semibold leading-tight tracking-[-0.035em] text-zinc-100">
+								What do you want to explore?
+							</h1>
+							<p className="mt-2 text-[13px] leading-5 text-zinc-500">
+								Ask anything. Burro will turn the answer into a canvas you can branch and investigate.
+							</p>
+						</div>
+
+						<div className="relative rounded-[18px] border border-white/[0.08] bg-[#202023] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_28px_rgba(0,0,0,0.2)] transition-colors focus-within:border-violet-500/55">
+							<textarea
+								className="h-[104px] w-full resize-none bg-transparent px-4 pb-12 pt-4 text-[15px] leading-6 text-zinc-100 placeholder-zinc-600 outline-none"
+								placeholder="Ask a question or describe what you want to understand..."
+								value={node.userMessage}
+								onChange={(event) => handleMessageChange(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === 'Enter' && !event.shiftKey) {
+										event.preventDefault()
+										handleSend()
+									}
+								}}
+								autoFocus
+							/>
+							<div className="absolute bottom-3 left-4 text-[10px] text-zinc-600">Enter to ask · Shift Enter for a new line</div>
+							<motion.button
+								type="button"
+								onClick={handleSend}
+								disabled={!node.userMessage.trim()}
+								className="absolute bottom-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-[10px] bg-violet-600 text-white shadow-[0_7px_18px_rgba(109,40,217,0.32),inset_0_1px_0_rgba(255,255,255,0.14)] transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-white/[0.045] disabled:text-zinc-700 disabled:shadow-none"
+								whileHover={node.userMessage.trim() && !shouldReduceMotion ? { y: -1, scale: 1.04 } : undefined}
+								whileTap={node.userMessage.trim() && !shouldReduceMotion ? { y: 1, scale: 0.94 } : undefined}
+								transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+								aria-label="Start exploring"
+							>
+								<ArrowUp className="h-4 w-4" />
+							</motion.button>
+						</div>
+
+						<div className="mt-5 grid grid-cols-2 gap-2">
+							{[
+								{ icon: Compass, label: 'Explain a big idea', prompt: 'Explain a fascinating big idea that changes how we see the world.' },
+								{ icon: Scale, label: 'Compare two things', prompt: 'Help me compare two important ideas, including their tradeoffs and when each works best.' },
+								{ icon: Library, label: 'Research with evidence', prompt: 'Research an important topic using evidence, sources, and the key claims I should examine.' },
+								{ icon: Route, label: 'Build a learning path', prompt: 'Build me a practical learning path for a complex topic, from fundamentals to deeper concepts.' },
+							].map(({ icon: Icon, label, prompt }) => (
+								<motion.button
+									key={label}
+									type="button"
+									onClick={() => handleStarterPrompt(prompt)}
+									className="flex h-10 items-center gap-2.5 rounded-xl border border-white/[0.055] bg-white/[0.025] px-3 text-left text-[12px] font-medium text-zinc-400 transition-colors hover:border-white/[0.09] hover:bg-white/[0.055] hover:text-zinc-200"
+									whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+									whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.985 }}
+									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+								>
+									<Icon className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+									<span className="truncate">{label}</span>
+								</motion.button>
+							))}
+						</div>
 					</div>
 				) : (
 					/* Follow-up composer */
