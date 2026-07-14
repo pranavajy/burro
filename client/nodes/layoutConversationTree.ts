@@ -11,6 +11,8 @@ interface TreeMeasurement {
 	children: TreeMeasurement[]
 }
 
+export const TREE_LAYOUT_ANIMATION_MS = 180
+
 /**
  * Arrange the connected conversation as a stable left-to-right tree.
  *
@@ -33,7 +35,7 @@ export function layoutConversationTree(editor: Editor, fromNodeId: TLShapeId, an
 	placeTree(tree, rootBounds.left, rootCenterY - tree.subtreeHeight / 2, updates)
 
 	if (animate) {
-		editor.animateShapes(updates, { animation: { duration: 180 } })
+		editor.animateShapes(updates, { animation: { duration: TREE_LAYOUT_ANIMATION_MS } })
 	} else {
 		editor.updateShapes(updates)
 	}

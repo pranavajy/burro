@@ -2,7 +2,10 @@ import { createShapeId, Editor, TLShapeId } from 'tldraw'
 import { TREE_COLUMN_GAP_PX } from '../constants'
 import { createOrUpdateConnectionBinding } from '../connection/ConnectionBindingUtil'
 import { getNextConnectionIndex } from '../connection/keepConnectionsAtBottom'
-import { layoutConversationTree } from './layoutConversationTree'
+import {
+	layoutConversationTree,
+	TREE_LAYOUT_ANIMATION_MS,
+} from './layoutConversationTree'
 import { getNodePorts } from './nodePorts'
 
 /** Create an empty follow-up card and attach it to a conversation node. */
@@ -72,5 +75,10 @@ export function createFollowUpNode(
 
 	editor.select(nodeId)
 	layoutConversationTree(editor, parentNodeId)
+	window.setTimeout(() => {
+		if (!editor.getShape(nodeId)) return
+		editor.select(nodeId)
+		editor.zoomToSelection({ animation: { duration: editor.options.animationMediumMs } })
+	}, TREE_LAYOUT_ANIMATION_MS)
 	return nodeId
 }

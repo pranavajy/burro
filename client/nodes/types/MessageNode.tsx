@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { T, useEditor } from 'tldraw'
-import { ArrowUp, BookOpen, Compass, ExternalLink, Library, Plus, Route, Scale, Sparkles, X } from 'lucide-react'
+import { ArrowUp, BookOpen, ChevronDown, Compass, ExternalLink, Library, Plus, Route, Scale, Sparkles, X } from 'lucide-react'
 import { NODE_WIDTH_PX } from '../../constants'
 import { createFollowUpNode } from '../createFollowUpNode'
 import { createSourceCard } from '../createSourceCard'
@@ -784,21 +784,26 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				)}
 
 				{isSent && !isThinking && sources.length > 0 && (
-					<div className="border-t border-[#29292D] px-7 py-4" onPointerDown={editor.markEventAsHandled}>
+					<div className="flex flex-col items-center px-7 py-4" onPointerDown={editor.markEventAsHandled}>
 						<>
-								<button
+								<motion.button
 									type="button"
 									onClick={toggleSources}
-									className="flex w-full items-center justify-between text-left"
+									className="inline-flex h-8 items-center gap-2 rounded-[10px] bg-white/[0.035] px-2.5 text-[11px] font-medium text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] transition-colors hover:bg-white/[0.06] hover:text-zinc-300"
+									whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+									whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.97 }}
+									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+									aria-expanded={Boolean(node.sourcesExpanded)}
 								>
-									<span className="flex items-center gap-2">
-										<span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/15 bg-sky-400/8 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-sky-300">
-											<BookOpen className="h-3 w-3" /> Web-grounded
-										</span>
-										<span className="text-[10px] text-zinc-600">Unmarked text is model synthesis</span>
+									<BookOpen className="h-3.5 w-3.5 text-zinc-600" />
+									<span>View sources</span>
+									<span className="rounded-md bg-white/[0.045] px-1.5 py-0.5 text-[9px] tabular-nums text-zinc-600">
+										{sources.length}
 									</span>
-									<span className="text-[10px] font-medium text-zinc-500">{sources.length} source{sources.length === 1 ? '' : 's'}</span>
-								</button>
+									<motion.span animate={{ rotate: node.sourcesExpanded ? 180 : 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}>
+										<ChevronDown className="h-3 w-3" />
+									</motion.span>
+								</motion.button>
 
 								<AnimatePresence initial={false}>
 									{node.sourcesExpanded && (
@@ -806,7 +811,7 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 											initial={shouldReduceMotion ? false : { opacity: 0, height: 0 }}
 											animate={{ opacity: 1, height: 'auto' }}
 											exit={{ opacity: 0, height: 0 }}
-											className="mt-3 space-y-1.5 overflow-hidden"
+											className="mt-3 w-full self-stretch space-y-1.5 overflow-hidden"
 										>
 											{sources.map((source, index) => {
 												const evidence = citations

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Command } from 'cmdk'
 import {
@@ -162,6 +162,7 @@ const options: Partial<TldrawOptions> = {
 interface WorkspacePreview {
 	title: string
 	images: string[]
+	hasContent: boolean
 }
 
 interface Workspace {
@@ -170,12 +171,13 @@ interface Workspace {
 	createdAt: number
 	updatedAt: number
 	preview?: WorkspacePreview
+	draft?: boolean
 }
 
 // Snapshot the canvas for the sidebar card: first user message + first two images
 function getWorkspacePreview(editor: Editor): WorkspacePreview {
-	const nodeShapes = editor
-		.getCurrentPageShapes()
+	const pageShapes = editor.getCurrentPageShapes()
+	const nodeShapes = pageShapes
 		.filter((s): s is NodeShape => s.type === 'node')
 		.sort((a, b) => a.y - b.y)
 
@@ -190,7 +192,13 @@ function getWorkspacePreview(editor: Editor): WorkspacePreview {
 		}
 		if (title && images.length >= 2) break
 	}
-	return { title, images }
+	const hasContent = pageShapes.some((shape) => {
+		if (shape.type !== 'node') return true
+		const node = shape.props.node
+		if (node.type !== 'message') return true
+		return Boolean(node.userMessage.trim() || node.assistantMessage.trim())
+	})
+	return { title, images, hasContent }
 }
 
 const WORKSPACES_STORAGE_KEY = 'burro.workspaces'
@@ -208,7 +216,7 @@ function loadWorkspaces(): Workspace[] {
 	}
 	// 'workflow' matches the original persistenceKey so existing canvases are kept
 	const now = Date.now()
-	return [{ id: 'workflow', name: 'My canvas', createdAt: now, updatedAt: now }]
+	return [{ id: 'workflow', name: 'My canvas', createdAt: now, updatedAt: now, draft: true }]
 }
 
 function formatUpdated(timestamp: number): string {
@@ -224,6 +232,7 @@ function formatUpdated(timestamp: number): string {
 
 function App() {
 	const shouldReduceMotion = useReducedMotion()
+	const activeEditorRef = useRef<Editor | null>(null)
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 	const [isCommandOpen, setIsCommandOpen] = useState(false)
 	const [workspaces, setWorkspaces] = useState<Workspace[]>(loadWorkspaces)
@@ -254,27 +263,64 @@ function App() {
 
 	const touchWorkspace = useCallback((id: string, preview: WorkspacePreview) => {
 		setWorkspaces((prev) =>
-			prev.map((w) => (w.id === id ? { ...w, updatedAt: Date.now(), preview } : w))
+			prev.map((w) =>
+				w.id === id
+					? { ...w, updatedAt: Date.now(), preview, draft: preview.hasContent ? false : w.draft }
+					: w
+			)
 		)
 	}, [])
 
 	// Refresh a workspace's card preview without bumping its updatedAt
 	const refreshPreview = useCallback((id: string, preview: WorkspacePreview) => {
-		setWorkspaces((prev) => prev.map((w) => (w.id === id ? { ...w, preview } : w)))
+		setWorkspaces((prev) =>
+			prev.map((w) =>
+				w.id === id ? { ...w, preview, draft: preview.hasContent ? false : w.draft } : w
+			)
+		)
 	}, [])
 
 	const createWorkspace = useCallback(() => {
 		const now = Date.now()
-		const untitledCount = workspaces.filter((w) => w.name.startsWith('Untitled')).length
+		const current = workspaces.find((workspace) => workspace.id === currentWorkspaceId)
+		const currentHasContent = activeEditorRef.current
+			? getWorkspacePreview(activeEditorRef.current).hasContent
+			: Boolean(current?.preview?.hasContent)
+		const discardCurrent = Boolean(current?.draft && !currentHasContent)
+		const retainedWorkspaces = discardCurrent
+			? workspaces.filter((workspace) => workspace.id !== currentWorkspaceId)
+			: workspaces
+		const untitledCount = retainedWorkspaces.filter((w) => w.name.startsWith('Untitled')).length
 		const workspace: Workspace = {
 			id: `ws-${uniqueId()}`,
 			name: untitledCount === 0 ? 'Untitled' : `Untitled ${untitledCount + 1}`,
 			createdAt: now,
 			updatedAt: now,
+			draft: true,
 		}
-		setWorkspaces((prev) => [workspace, ...prev])
+		setWorkspaces([workspace, ...retainedWorkspaces])
 		setCurrentWorkspaceId(workspace.id)
-	}, [workspaces])
+	}, [workspaces, currentWorkspaceId])
+
+	const openWorkspace = useCallback(
+		(id: string) => {
+			if (id === currentWorkspaceId) return
+			const current = workspaces.find((workspace) => workspace.id === currentWorkspaceId)
+			const currentHasContent = activeEditorRef.current
+				? getWorkspacePreview(activeEditorRef.current).hasContent
+				: Boolean(current?.preview?.hasContent)
+			if (current?.draft && !currentHasContent) {
+				setWorkspaces((previous) => previous.filter((workspace) => workspace.id !== currentWorkspaceId))
+				try {
+					indexedDB.deleteDatabase(`TLDRAW_DOCUMENT_v2${currentWorkspaceId}`)
+				} catch {
+					// best-effort cleanup only
+				}
+			}
+			setCurrentWorkspaceId(id)
+		},
+		[workspaces, currentWorkspaceId]
+	)
 
 	useEffect(() => {
 		const handleNewCanvas = () => createWorkspace()
@@ -287,7 +333,7 @@ function App() {
 			const remaining = workspaces.filter((w) => w.id !== id)
 			if (remaining.length === 0) {
 				const now = Date.now()
-				const fresh: Workspace = { id: `ws-${uniqueId()}`, name: 'Untitled', createdAt: now, updatedAt: now }
+				const fresh: Workspace = { id: `ws-${uniqueId()}`, name: 'Untitled', createdAt: now, updatedAt: now, draft: true }
 				setWorkspaces([fresh])
 				setCurrentWorkspaceId(fresh.id)
 			} else {
@@ -319,6 +365,7 @@ function App() {
 				components={components}
 				onMount={(editorInstance) => {
 					;(window as any).editor = editorInstance
+					activeEditorRef.current = editorInstance
 					if (!editorInstance.getCurrentPageShapes().some((s) => s.type === 'node')) {
 						const viewportCenter = editorInstance.getViewportPageBounds().center
 						editorInstance.createShape({
@@ -403,23 +450,23 @@ function App() {
 							transition={{ type: 'spring', stiffness: 390, damping: 36, mass: 0.9 }}
 						>
 							{/* shadcn-style header */}
-							<div className="flex h-16 items-center justify-between px-4">
-								<div className="text-[20px] font-semibold tracking-[-0.035em] text-zinc-100">
+							<div className="flex items-center justify-between px-4 pt-5">
+								<div className="text-[24px] font-semibold leading-none tracking-[-0.04em] text-zinc-100">
 									burro<span className="text-violet-400">.</span>
 								</div>
 								<motion.button
 									onClick={() => setIsSidebarOpen(false)}
-									className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-white/[0.04] hover:text-zinc-400"
+									className="flex h-9 w-9 items-center justify-center rounded-[10px] text-zinc-500 transition-colors hover:bg-white/[0.05] hover:text-zinc-200"
 									whileHover={shouldReduceMotion ? undefined : { scale: 1.04 }}
 									whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
 									transition={{ type: 'spring', stiffness: 500, damping: 30 }}
 									aria-label="Close canvases"
 								>
-									<PanelLeft className="h-3.5 w-3.5" />
+									<PanelLeft className="h-[18px] w-[18px]" />
 								</motion.button>
 							</div>
 
-							<div className="mx-3 mb-3 flex gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl">
+							<div className="mx-3 mb-6 mt-4 flex gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl">
 								<motion.button
 									onClick={() => {
 										createWorkspace()
@@ -447,7 +494,7 @@ function App() {
 								</motion.button>
 							</div>
 
-							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-3 pt-1">
+							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-3">
 								<AnimatePresence initial={false}>
 									{sortedWorkspaces.map((workspace, workspaceIndex) => {
 										const isActive = workspace.id === currentWorkspaceId
@@ -460,13 +507,13 @@ function App() {
 												role="button"
 												tabIndex={0}
 												onClick={() => {
-													setCurrentWorkspaceId(workspace.id)
+											openWorkspace(workspace.id)
 													setIsSidebarOpen(false)
 												}}
 												onKeyDown={(event) => {
 													if (event.key === 'Enter' || event.key === ' ') {
 														event.preventDefault()
-														setCurrentWorkspaceId(workspace.id)
+												openWorkspace(workspace.id)
 														setIsSidebarOpen(false)
 													}
 												}}
@@ -568,7 +615,7 @@ function App() {
 									value={workspace.id}
 									keywords={[title, workspace.name]}
 									onSelect={() => {
-										setCurrentWorkspaceId(workspace.id)
+										openWorkspace(workspace.id)
 										setIsCommandOpen(false)
 										setIsSidebarOpen(false)
 									}}
