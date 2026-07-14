@@ -29,9 +29,14 @@ const overlayUtils = [ConnectionCenterHandleOverlayUtil]
 const components: TLComponents = {
 	Toolbar: () => (
 		<>
-			<WorkflowToolbar />
-			<div className="tlui-main-toolbar tlui-main-toolbar--horizontal">
-				<TldrawUiToolbar className="tlui-main-toolbar__tools" label="Actions">
+			{/* Main tools toolbar (mouse, nodes, shapes) positioned at bottom-center */}
+			<div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[999] pointer-events-auto flex items-center justify-center">
+				<WorkflowToolbar />
+			</div>
+
+			{/* Actions toolbar (undo/redo/delete/menu) positioned in the top-right corner */}
+			<div className="fixed top-4 right-4 z-[999] pointer-events-auto bg-[#1C1C1C] border border-[#2C2C2C] rounded-xl p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center">
+				<TldrawUiToolbar className="!p-0 !bg-transparent !border-0" label="Actions">
 					<DefaultQuickActions />
 					<DefaultActionsMenu />
 				</TldrawUiToolbar>

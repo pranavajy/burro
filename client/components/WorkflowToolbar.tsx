@@ -95,7 +95,7 @@ export const overrides: TLUiOverrides = {
 
 export function WorkflowToolbar() {
 	return (
-		<DefaultToolbar orientation="vertical" maxItems={7}>
+		<DefaultToolbar orientation="horizontal" maxItems={7}>
 			<TldrawUiMenuGroup id="selection">
 				<SelectToolbarItem />
 				<HandToolbarItem />
