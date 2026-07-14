@@ -237,6 +237,9 @@ function App() {
 					// This allows users to create connections by pointing at ports
 					editorInstance.getStateDescendant('select')!.addChild(PointingPort)
 
+					// Burro opens in grab/pan mode so the canvas is immediately navigable.
+					editorInstance.setCurrentTool('hand')
+
 					// Ensure connections always stay at the bottom of the shape stack
 					// This prevents them from covering other shapes
 					keepConnectionsAtBottom(editorInstance)
@@ -300,7 +303,7 @@ function App() {
 							transition={{ type: 'spring', stiffness: 390, damping: 36, mass: 0.9 }}
 						>
 							{/* shadcn-style header */}
-							<div className="flex h-16 items-center justify-between border-b border-[#29292D] px-4">
+							<div className="flex h-16 items-center justify-between px-4">
 								<div className="text-[20px] font-semibold tracking-[-0.035em] text-zinc-100">
 									burro<span className="text-violet-400">.</span>
 								</div>
@@ -340,14 +343,7 @@ function App() {
 								</motion.button>
 							</div>
 
-							<div className="flex items-center justify-between px-4 pb-2 pt-2">
-								<div className="text-[11px] font-medium text-zinc-500">Canvases</div>
-								<div className="text-[10px] tabular-nums text-zinc-600">
-									{sortedWorkspaces.length}
-								</div>
-							</div>
-
-							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-3">
+							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-3 pt-1">
 								<AnimatePresence initial={false}>
 									{sortedWorkspaces.map((workspace, workspaceIndex) => {
 										const isActive = workspace.id === currentWorkspaceId
@@ -370,10 +366,10 @@ function App() {
 														setIsSidebarOpen(false)
 													}
 												}}
-												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-2xl border px-4 pb-4 pt-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-violet-500/60 ${
+												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-2xl px-4 pb-4 pt-5 outline-none backdrop-blur-xl transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-white/20 ${
 													isActive
-														? 'border-violet-400/35 bg-[#202023] text-zinc-100'
-														: 'border-[#29292D] bg-[#1A1A1D] text-zinc-300 hover:border-[#3A3A3F] hover:bg-[#1D1D20]'
+														? 'bg-white/[0.075] text-zinc-100 shadow-[0_14px_34px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.045)]'
+														: 'bg-white/[0.028] text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.025)] hover:bg-white/[0.052] hover:shadow-[0_14px_32px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.04)]'
 												}`}
 												initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }}
 												animate={{ opacity: 1, x: 0 }}
@@ -381,12 +377,12 @@ function App() {
 												transition={{ delay: shouldReduceMotion ? 0 : workspaceIndex * 0.035, type: 'spring', stiffness: 440, damping: 34 }}
 												whileHover={shouldReduceMotion ? undefined : { y: -2 }}
 											>
-												<div className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-xl bg-[#141416]">
+												<div className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-xl bg-black/25 shadow-[inset_0_1px_14px_rgba(0,0,0,0.3)] backdrop-blur-sm">
 													{previewImages.length > 0 ? (
 														previewImages.slice(0, 2).map((url, idx) => (
 															<motion.div
 																key={url}
-																className="absolute overflow-hidden rounded-xl border border-black/10 bg-white p-1 shadow-[0_10px_25px_rgba(0,0,0,0.45)]"
+																className="absolute overflow-hidden rounded-xl bg-white p-1 shadow-[0_12px_28px_rgba(0,0,0,0.5)]"
 																style={{ zIndex: idx }}
 																animate={{
 																	x: previewImages.length === 1 ? 0 : idx === 0 ? -48 : 48,
@@ -400,7 +396,7 @@ function App() {
 															</motion.div>
 														))
 													) : (
-														<div className="flex h-20 w-28 items-center justify-center rounded-xl border border-[#303035] bg-[#1B1B1E] text-[26px] font-semibold uppercase text-zinc-700">{title.charAt(0)}</div>
+														<div className="flex h-20 w-28 items-center justify-center rounded-xl bg-white/[0.035] text-[26px] font-semibold uppercase text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md">{title.charAt(0)}</div>
 													)}
 												</div>
 
@@ -418,7 +414,7 @@ function App() {
 														event.stopPropagation()
 														deleteWorkspace(workspace.id)
 													}}
-													className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/65 text-zinc-400 opacity-0 backdrop-blur-sm transition-colors group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-300 focus:opacity-100"
+													className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md bg-black/55 text-zinc-400 opacity-0 shadow-[0_6px_18px_rgba(0,0,0,0.35)] backdrop-blur-md transition-colors group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-300 focus:opacity-100"
 													whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
 													whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }}
 													title="Delete canvas"

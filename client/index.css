@@ -34,6 +34,13 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 	padding: 4px 6px;
 }
 
+.burro-workflow-dock .tlui-main-toolbar__tools {
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	padding: 0;
+}
+
 .tlui-main-toolbar .tlui-button__tool {
 	height: 44px;
 	width: 44px;
@@ -102,6 +109,14 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 
 .ConnectionShape_draft {
 	stroke-linecap: round;
+}
+
+.ConnectionShape_source {
+	stroke: #547184;
+	stroke-width: 1.5px;
+	stroke-dasharray: 5 7;
+	stroke-linecap: round;
+	opacity: 0.72;
 }
 
 .ConnectionShapeIndicator {

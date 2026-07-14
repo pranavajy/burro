@@ -11,6 +11,7 @@ import {
 	TLHandle,
 	TLHandleDragInfo,
 	TLShape,
+	T,
 	Vec,
 	VecLike,
 	VecModel,
@@ -35,7 +36,7 @@ const CONNECTION_TYPE = 'connection'
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {
-		[CONNECTION_TYPE]: { start: VecModel; end: VecModel }
+		[CONNECTION_TYPE]: { start: VecModel; end: VecModel; kind?: 'conversation' | 'source' }
 	}
 }
 
@@ -55,12 +56,14 @@ export class ConnectionShapeUtil extends ShapeUtil<ConnectionShape> {
 	static override props: RecordProps<ConnectionShape> = {
 		start: vecModelValidator,
 		end: vecModelValidator,
+		kind: T.optional(T.literalEnum('conversation', 'source')),
 	}
 
 	getDefaultProps(): ConnectionShape['props'] {
 		return {
 			start: { x: 0, y: 0 },
 			end: { x: 100, y: 100 },
+			kind: 'conversation',
 		}
 	}
 
@@ -301,7 +304,7 @@ function ConnectionShape({ connection }: { connection: ConnectionShape }) {
 	)
 
 	return (
-		<SVGContainer className={classNames('ConnectionShape', { ConnectionShape_draft: isDraft })}>
+		<SVGContainer className={classNames('ConnectionShape', { ConnectionShape_draft: isDraft, ConnectionShape_source: connection.props.kind === 'source' })}>
 			<path d={getConnectionPath(start, end)} strokeDasharray={isDraft ? '8 8' : undefined} />
 		</SVGContainer>
 	)

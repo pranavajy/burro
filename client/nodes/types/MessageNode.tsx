@@ -3,9 +3,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { T, useEditor } from 'tldraw'
-import { Sparkles, X } from 'lucide-react'
+import { BookOpen, ExternalLink, Plus, Sparkles, X } from 'lucide-react'
 import { NODE_WIDTH_PX } from '../../constants'
 import { createFollowUpNode } from '../createFollowUpNode'
+import { createSourceCard } from '../createSourceCard'
 import { getAllConnectedNodes, getNodePortConnections } from '../nodePorts'
 import { layoutConversationTree } from '../layoutConversationTree'
 import { NodeShape } from '../NodeShapeUtil'
@@ -26,6 +27,28 @@ export const MessageNode = T.object({
 	userMessage: T.string,
 	assistantMessage: T.string,
 	autoSubmit: T.optional(T.boolean),
+	grounded: T.optional(T.boolean),
+	sourcesExpanded: T.optional(T.boolean),
+	sources: T.optional(
+		T.arrayOf(
+			T.object({
+				id: T.string,
+				url: T.string,
+				title: T.string,
+				domain: T.string,
+			})
+		)
+	),
+	citations: T.optional(
+		T.arrayOf(
+			T.object({
+				start: T.number,
+				end: T.number,
+				text: T.string,
+				sourceIds: T.arrayOf(T.string),
+			})
+		)
+	),
 	images: T.optional(
 		T.arrayOf(
 			T.object({
@@ -49,6 +72,10 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 			assistantMessage: '',
 			images: [],
 			autoSubmit: false,
+			grounded: false,
+			sourcesExpanded: false,
+			sources: [],
+			citations: [],
 		}
 	}
 	getBodyWidthPx(_shape: NodeShape, _node: MessageNode): number {
@@ -67,6 +94,9 @@ export class MessageNodeDefinition extends NodeDefinition<MessageNode> {
 		const images = _node.images || []
 		if (images.length > 0) {
 			height += 200 // fanned image stack section
+		}
+		if ((_node.sources?.length ?? 0) > 0) {
+			height += _node.sourcesExpanded ? 68 + (_node.sources?.length ?? 0) * 62 : 54
 		}
 
 		// Measure user message text height (since it's static/read-only now)
@@ -146,25 +176,72 @@ async function fetchWikipediaImages(query: string): Promise<Array<{ url: string;
 	return []
 }
 
-function renderInlineMarkdown(
-	text: string,
+type MessageCitation = NonNullable<MessageNode['citations']>[number]
+
+interface MarkdownRenderOptions {
 	onConceptClick?: (concept: string) => void
-): React.ReactNode[] {
-	const parts = text.split('**')
+	onCitationClick?: (sourceIds: string[]) => void
+	sourceNumbers?: Map<string, number>
+}
+
+function addCitationMarkers(text: string, citations: MessageCitation[]): string {
+	let result = text
+	const insertions = citations
+		.map((citation) => {
+			let end = citation.end
+			if (citation.text && result.slice(citation.start, citation.end) !== citation.text) {
+				const foundAt = result.lastIndexOf(citation.text)
+				if (foundAt >= 0) end = foundAt + citation.text.length
+			}
+			return { end, sourceIds: citation.sourceIds }
+		})
+		.filter((citation) => citation.end > 0 && citation.end <= text.length && citation.sourceIds.length > 0)
+		.sort((a, b) => b.end - a.end)
+
+	for (const citation of insertions) {
+		result = `${result.slice(0, citation.end)} [[${citation.sourceIds.join(',')}]]${result.slice(citation.end)}`
+	}
+	return result
+}
+
+function renderInlineMarkdown(text: string, options: MarkdownRenderOptions = {}): React.ReactNode[] {
+	const parts = text.split(/(\*\*[^*]+\*\*|\[\[[^\]]+\]\])/g).filter(Boolean)
 	return parts.map((part, index) => {
-		if (index % 2 === 1) {
+		if (part.startsWith('**') && part.endsWith('**')) {
+			const concept = part.slice(2, -2)
 			return (
 				<button
 					key={index}
 					type="button"
 					onClick={(event) => {
 						event.stopPropagation()
-						onConceptClick?.(part.trim())
+						options.onConceptClick?.(concept.trim())
 					}}
 					className="inline cursor-pointer border-0 bg-transparent p-0 font-semibold text-zinc-50 underline decoration-zinc-500 decoration-1 underline-offset-[5px] transition-colors hover:text-violet-300 hover:decoration-violet-400 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
-					title={`Deep dive into ${part.trim()}`}
+					title={`Deep dive into ${concept.trim()}`}
 				>
-					{part}
+					{concept}
+				</button>
+			)
+		}
+		if (part.startsWith('[[') && part.endsWith(']]')) {
+			const sourceIds = part.slice(2, -2).split(',').filter(Boolean)
+			const numbers = sourceIds
+				.map((id) => options.sourceNumbers?.get(id))
+				.filter((number): number is number => number !== undefined)
+			if (numbers.length === 0) return null
+			return (
+				<button
+					key={index}
+					type="button"
+					onClick={(event) => {
+						event.stopPropagation()
+						options.onCitationClick?.(sourceIds)
+					}}
+					className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-sky-400/20 bg-sky-400/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-sky-300 transition-colors hover:border-sky-300/35 hover:bg-sky-400/15"
+					title="Show evidence"
+				>
+					{numbers.join(',')}
 				</button>
 			)
 		}
@@ -172,27 +249,27 @@ function renderInlineMarkdown(
 	})
 }
 
-function parseMarkdown(text: string, onConceptClick?: (concept: string) => void): React.ReactNode {
+function parseMarkdown(text: string, options: MarkdownRenderOptions = {}): React.ReactNode {
 	const lines = text.split('\n')
 	return lines.map((line, idx) => {
 		if (line.startsWith('### ')) {
 			return (
 				<h3 key={idx} className="mt-5 mb-1.5 text-[15px] font-semibold leading-6 text-zinc-100">
-					{renderInlineMarkdown(line.slice(4), onConceptClick)}
+					{renderInlineMarkdown(line.slice(4), options)}
 				</h3>
 			)
 		}
 		if (line.startsWith('## ')) {
 			return (
 				<h2 key={idx} className="mt-5 mb-2 text-[16.5px] font-semibold leading-6 text-zinc-100">
-					{renderInlineMarkdown(line.slice(3), onConceptClick)}
+					{renderInlineMarkdown(line.slice(3), options)}
 				</h2>
 			)
 		}
 		if (line.startsWith('# ')) {
 			return (
 				<h1 key={idx} className="mt-5 mb-2 text-[18px] font-semibold leading-7 text-zinc-50">
-					{renderInlineMarkdown(line.slice(2), onConceptClick)}
+					{renderInlineMarkdown(line.slice(2), options)}
 				</h1>
 			)
 		}
@@ -202,7 +279,7 @@ function parseMarkdown(text: string, onConceptClick?: (concept: string) => void)
 			return (
 				<div key={idx} className="my-1.5 ml-0.5 flex gap-2.5 text-[14.5px] leading-[1.7] text-zinc-300">
 					<span className="text-zinc-500 min-w-[16px] text-right">{matchOrdered[1]}.</span>
-					<span>{renderInlineMarkdown(matchOrdered[2], onConceptClick)}</span>
+					<span>{renderInlineMarkdown(matchOrdered[2], options)}</span>
 				</div>
 			)
 		}
@@ -211,7 +288,7 @@ function parseMarkdown(text: string, onConceptClick?: (concept: string) => void)
 			return (
 				<div key={idx} className="my-1.5 ml-0.5 flex gap-2.5 text-[14.5px] leading-[1.7] text-zinc-300">
 					<span className="text-zinc-500">•</span>
-					<span>{renderInlineMarkdown(line.slice(2), onConceptClick)}</span>
+					<span>{renderInlineMarkdown(line.slice(2), options)}</span>
 				</div>
 			)
 		}
@@ -222,7 +299,7 @@ function parseMarkdown(text: string, onConceptClick?: (concept: string) => void)
 
 		return (
 			<p key={idx} className="my-2 text-[14.5px] leading-[1.7] text-zinc-300">
-				{renderInlineMarkdown(line, onConceptClick)}
+				{renderInlineMarkdown(line, options)}
 			</p>
 		)
 	})
@@ -233,6 +310,7 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 	const shouldReduceMotion = useReducedMotion()
 	const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null)
 	const [isCardHovered, setIsCardHovered] = useState(false)
+	const [highlightedSourceIds, setHighlightedSourceIds] = useState<string[]>([])
 
 	useEffect(() => {
 		if (!previewImage) return
@@ -280,6 +358,10 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 			...node,
 			assistantMessage: '...',
 			images: [],
+			grounded: false,
+			sourcesExpanded: false,
+			sources: [],
+			citations: [],
 		}))
 
 		// Fetch Wikipedia images in parallel
@@ -304,23 +386,47 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				const reader = response.body.getReader()
 				const decoder = new TextDecoder()
 				let accumulatedText = ''
+				let eventBuffer = ''
+
+				const processEvent = (block: string) => {
+					const event = block.match(/^event:\s*(.+)$/m)?.[1]
+					const rawData = block.match(/^data:\s*(.+)$/m)?.[1]
+					if (!event || !rawData) return
+
+					try {
+						const data = JSON.parse(rawData)
+						if (event === 'text' && typeof data === 'string') {
+							accumulatedText += data
+							updateNode<MessageNode>(editor, shape, (node) => ({
+								...node,
+								assistantMessage: accumulatedText,
+							}))
+						} else if (event === 'evidence') {
+							updateNode<MessageNode>(editor, shape, (node) => ({
+								...node,
+								assistantMessage: typeof data.text === 'string' ? data.text : accumulatedText,
+								grounded: Boolean(data.grounded),
+								sources: Array.isArray(data.sources) ? data.sources : [],
+								citations: Array.isArray(data.citations) ? data.citations : [],
+							}))
+						} else if (event === 'error') {
+							console.error('Response stream error:', data.message)
+						}
+					} catch (error) {
+						console.error('Could not parse response event:', error)
+					}
+				}
 
 				while (true) {
 					const { value, done } = await reader.read()
 					if (done) break
-					const chunk = decoder.decode(value, { stream: true })
-					// Some environments may send SSE-style lines; extract data if so, else use raw chunk
-					const maybeSse = chunk
-						.split('\n')
-						.filter((line) => line.startsWith('data:'))
-						.map((line) => line.replace(/^data:\s?/, ''))
-						.join('')
-					accumulatedText += maybeSse || chunk
-					updateNode<MessageNode>(editor, shape, (node) => ({
-						...node,
-						assistantMessage: accumulatedText,
-					}))
+					eventBuffer += decoder.decode(value, { stream: true })
+					const blocks = eventBuffer.split('\n\n')
+					eventBuffer = blocks.pop() ?? ''
+					for (const block of blocks) processEvent(block)
 				}
+				eventBuffer += decoder.decode()
+				if (eventBuffer.trim()) processEvent(eventBuffer)
 			} catch (e) {
 				console.error(e)
 			} finally {
@@ -377,10 +483,35 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 		[editor, shape.id]
 	)
 
+	const handleCitationClick = useCallback(
+		(sourceIds: string[]) => {
+			setHighlightedSourceIds(sourceIds)
+			updateNode<MessageNode>(editor, shape, (currentNode) => ({
+				...currentNode,
+				sourcesExpanded: true,
+			}))
+			requestAnimationFrame(() => layoutConversationTree(editor, shape.id))
+		},
+		[editor, shape]
+	)
+
+	const toggleSources = useCallback(() => {
+		setHighlightedSourceIds([])
+		updateNode<MessageNode>(editor, shape, (currentNode) => ({
+			...currentNode,
+			sourcesExpanded: !currentNode.sourcesExpanded,
+		}))
+		requestAnimationFrame(() => layoutConversationTree(editor, shape.id))
+	}, [editor, shape])
+
 	const images = node.images || []
 	const assistantMessage = node.assistantMessage.trim()
 	const isSent = assistantMessage !== ''
 	const isThinking = assistantMessage === '...'
+	const sources = node.sources ?? []
+	const citations = node.citations ?? []
+	const sourceNumbers = new Map(sources.map((source, index) => [source.id, index + 1]))
+	const citedMessage = addCitationMarkers(node.assistantMessage, citations)
 
 	return (
 		<motion.div
@@ -518,9 +649,81 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 							</div>
 						) : (
 							<div className="font-sans font-normal text-zinc-300 antialiased">
-								{parseMarkdown(node.assistantMessage, handleConceptClick)}
+								{parseMarkdown(citedMessage, {
+									onConceptClick: handleConceptClick,
+									onCitationClick: handleCitationClick,
+									sourceNumbers,
+								})}
 							</div>
 						)}
+					</div>
+				)}
+
+				{isSent && !isThinking && sources.length > 0 && (
+					<div className="border-t border-[#29292D] px-7 py-4" onPointerDown={editor.markEventAsHandled}>
+						<>
+								<button
+									type="button"
+									onClick={toggleSources}
+									className="flex w-full items-center justify-between text-left"
+								>
+									<span className="flex items-center gap-2">
+										<span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/15 bg-sky-400/8 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-sky-300">
+											<BookOpen className="h-3 w-3" /> Web-grounded
+										</span>
+										<span className="text-[10px] text-zinc-600">Unmarked text is model synthesis</span>
+									</span>
+									<span className="text-[10px] font-medium text-zinc-500">{sources.length} source{sources.length === 1 ? '' : 's'}</span>
+								</button>
+
+								<AnimatePresence initial={false}>
+									{node.sourcesExpanded && (
+										<motion.div
+											initial={shouldReduceMotion ? false : { opacity: 0, height: 0 }}
+											animate={{ opacity: 1, height: 'auto' }}
+											exit={{ opacity: 0, height: 0 }}
+											className="mt-3 space-y-1.5 overflow-hidden"
+										>
+											{sources.map((source, index) => {
+												const evidence = citations
+													.filter((citation) => citation.sourceIds.includes(source.id))
+													.map((citation) => citation.text)
+													.filter(Boolean)
+													.join(' ')
+												const isHighlighted = highlightedSourceIds.includes(source.id)
+												return (
+													<div
+														key={source.id}
+														className={`group/source flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+															isHighlighted
+																? 'border-sky-400/30 bg-sky-400/8'
+																: 'border-[#303034] bg-[#1B1B1E]'
+														}`}
+													>
+														<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sky-400/10 text-[9px] font-semibold text-sky-300">{index + 1}</span>
+														<button
+															type="button"
+															onClick={() => window.open(source.url, '_blank', 'noopener,noreferrer')}
+															className="min-w-0 flex-1 text-left"
+														>
+															<div className="truncate text-[11px] font-medium text-zinc-300">{source.title}</div>
+															<div className="mt-0.5 flex items-center gap-1 text-[9px] text-zinc-600">{source.domain || 'Web source'} <ExternalLink className="h-2.5 w-2.5" /></div>
+														</button>
+														<button
+															type="button"
+															onClick={() => createSourceCard(editor, shape.id, { ...source, evidence })}
+															className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-sky-400/10 hover:text-sky-300"
+															title="Add source card to canvas"
+														>
+															<Plus className="h-3.5 w-3.5" />
+														</button>
+													</div>
+												)
+											})}
+										</motion.div>
+									)}
+								</AnimatePresence>
+						</>
 					</div>
 				)}
 			</motion.div>
