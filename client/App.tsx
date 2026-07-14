@@ -3,6 +3,7 @@ import {
 	DefaultActionsMenu,
 	DefaultQuickActions,
 	DefaultStylePanel,
+	Editor,
 	TLComponents,
 	Tldraw,
 	TldrawOptions,
@@ -70,11 +71,38 @@ const options: Partial<TldrawOptions> = {
 	maxPages: 1,
 }
 
+interface WorkspacePreview {
+	title: string
+	images: string[]
+}
+
 interface Workspace {
 	id: string
 	name: string
 	createdAt: number
 	updatedAt: number
+	preview?: WorkspacePreview
+}
+
+// Snapshot the canvas for the sidebar card: first user message + first two images
+function getWorkspacePreview(editor: Editor): WorkspacePreview {
+	const nodeShapes = editor
+		.getCurrentPageShapes()
+		.filter((s): s is NodeShape => s.type === 'node')
+		.sort((a, b) => a.y - b.y)
+
+	let title = ''
+	const images: string[] = []
+	for (const shape of nodeShapes) {
+		const node = shape.props.node
+		if (node.type !== 'message') continue
+		if (!title && node.userMessage.trim()) title = node.userMessage.trim()
+		for (const img of node.images ?? []) {
+			if (images.length < 2) images.push(img.url)
+		}
+		if (title && images.length >= 2) break
+	}
+	return { title, images }
 }
 
 const WORKSPACES_STORAGE_KEY = 'burro.workspaces'
@@ -200,6 +228,16 @@ function App() {
 
 					// Disable transparency for workflow shapes
 					disableTransparency(editorInstance, ['node', 'connection'])
+
+					// Bump the workspace's updatedAt when the user edits (debounced)
+					let touchTimeout: ReturnType<typeof setTimeout> | undefined
+					editorInstance.store.listen(
+						() => {
+							clearTimeout(touchTimeout)
+							touchTimeout = setTimeout(() => touchWorkspace(currentWorkspaceId), 1000)
+						},
+						{ scope: 'document', source: 'user' }
+					)
 				}}
 			/>
 
@@ -224,27 +262,88 @@ function App() {
 
 			{/* Sidebar Panel */}
 			<div
-				className={`fixed top-0 left-0 h-screen w-80 bg-[#1C1C1C] border-r border-[#2C2C2C] z-[1001] shadow-[12px_0_40px_rgba(0,0,0,0.6)] pointer-events-auto flex flex-col transition-transform duration-300 ${
+				className={`fixed top-0 left-0 h-screen w-72 bg-[#161618] border-r border-[#26262A] z-[1001] shadow-[12px_0_40px_rgba(0,0,0,0.6)] pointer-events-auto flex flex-col transition-transform duration-300 ${
 					isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 				}`}
 			>
-				{/* Drawer Header */}
-				<div className="flex items-center justify-between p-4 border-b border-[#2C2C2C]">
-					<div className="flex items-center gap-2">
-						<Sparkles className="w-5 h-5 text-blue-400" />
-						<span className="font-extrabold text-zinc-100 tracking-wider uppercase text-sm select-none">Menu</span>
-					</div>
+				{/* Wordmark */}
+				<div className="flex items-center justify-between px-5 pt-5 pb-4">
+					<span className="text-[22px] font-semibold tracking-tight text-zinc-100 select-none lowercase">
+						burro<span className="text-[#8b5cf6]">.</span>
+					</span>
 					<button
 						onClick={() => setIsSidebarOpen(false)}
-						className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+						className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-[#232326] transition-colors cursor-pointer"
 					>
 						<X className="w-4 h-4" />
 					</button>
 				</div>
 
-				{/* Drawer Body - Empty for custom contents */}
-				<div className="flex-grow p-4 overflow-y-auto scrollbar-none">
-					{/* Custom sidebar components can be rendered here */}
+				{/* New canvas */}
+				<div className="px-3 pb-2">
+					<button
+						onClick={createWorkspace}
+						className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-[13px] font-medium text-zinc-200 bg-[#1E1E21] hover:bg-[#232326] border border-[#2A2A2E] transition-colors cursor-pointer"
+					>
+						<Plus className="w-4 h-4 text-zinc-400" />
+						New canvas
+					</button>
+				</div>
+
+				{/* History */}
+				<div className="px-5 pt-4 pb-2">
+					<span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-zinc-500 select-none">
+						History
+					</span>
+				</div>
+				<div className="flex-grow px-3 overflow-y-auto scrollbar-none">
+					{sortedWorkspaces.map((workspace) => {
+						const isActive = workspace.id === currentWorkspaceId
+						return (
+							<div
+								key={workspace.id}
+								onClick={() => {
+									setCurrentWorkspaceId(workspace.id)
+									setIsSidebarOpen(false)
+								}}
+								className={`group flex items-center gap-3 px-3 py-2.5 mb-0.5 rounded-xl cursor-pointer transition-colors ${
+									isActive ? 'bg-[#232326]' : 'hover:bg-[#1E1E21]'
+								}`}
+							>
+								<span
+									className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+										isActive ? 'bg-[#8b5cf6]' : 'bg-zinc-700'
+									}`}
+								/>
+								<div className="flex flex-col min-w-0 flex-grow">
+									<span
+										className={`text-[13px] font-medium truncate ${
+											isActive ? 'text-zinc-100' : 'text-zinc-400 group-hover:text-zinc-200'
+										}`}
+									>
+										{workspace.name}
+									</span>
+									<span className="text-[11px] text-zinc-600">{timeAgo(workspace.updatedAt)}</span>
+								</div>
+								<button
+									onClick={(e) => {
+										e.stopPropagation()
+										deleteWorkspace(workspace.id)
+									}}
+									className="p-1.5 rounded-lg text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-[#2A2A2E] transition-all cursor-pointer"
+									title="Delete canvas"
+								>
+									<Trash2 className="w-3.5 h-3.5" />
+								</button>
+							</div>
+						)
+					})}
+				</div>
+
+				{/* Autosave status */}
+				<div className="flex items-center gap-2 px-5 py-4 border-t border-[#26262A]">
+					<Check className="w-3.5 h-3.5 text-zinc-600" />
+					<span className="text-[11px] text-zinc-600 select-none">All changes saved</span>
 				</div>
 			</div>
 		</div>
