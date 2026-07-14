@@ -85,6 +85,3 @@ Make sure to set your `GOOGLE_GENERATIVE_AI_API_KEY` in your Cloudflare Workers 
 
 Modify `/worker/worker.ts` to use different AI providers supported by the Vercel AI SDK.
 
-## License
-
-The application code in this repository is MIT licensed. The canvas is powered by the [tldraw SDK](https://tldraw.dev), which is provided under the [tldraw license](https://github.com/tldraw/tldraw/blob/main/LICENSE.md).
