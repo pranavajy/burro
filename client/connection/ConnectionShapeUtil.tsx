@@ -279,15 +279,30 @@ export class ConnectionShapeUtil extends ShapeUtil<ConnectionShape> {
 function ConnectionShape({ connection }: { connection: ConnectionShape }) {
 	const editor = useEditor()
 
-	// Get the connection terminals
-	const { start, end } = useValue('terminals', () => getConnectionTerminals(editor, connection), [
-		editor,
-		connection,
-	])
+	// Draft follow-ups use a dotted connector. As soon as the response begins,
+	// the same connection becomes a solid part of the conversation tree.
+	const { start, end, isDraft } = useValue(
+		'connection display state',
+		() => {
+			const terminals = getConnectionTerminals(editor, connection)
+			const endBinding = getConnectionBindings(editor, connection).end
+			const endNode = endBinding ? editor.getShape(endBinding.toId) : undefined
+			const assistantMessage =
+				endNode && editor.isShapeOfType(endNode, 'node') && endNode.props.node.type === 'message'
+					? endNode.props.node.assistantMessage.trim()
+					: null
+
+			return {
+				...terminals,
+				isDraft: assistantMessage === '' || assistantMessage === '...',
+			}
+		},
+		[editor, connection]
+	)
 
 	return (
-		<SVGContainer className={classNames('ConnectionShape')}>
-			<path d={getConnectionPath(start, end)} />
+		<SVGContainer className={classNames('ConnectionShape', { ConnectionShape_draft: isDraft })}>
+			<path d={getConnectionPath(start, end)} strokeDasharray={isDraft ? '8 8' : undefined} />
 		</SVGContainer>
 	)
 }

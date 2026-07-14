@@ -100,6 +100,10 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 	fill: none;
 }
 
+.ConnectionShape_draft {
+	stroke-linecap: round;
+}
+
 .ConnectionShapeIndicator {
 	stroke-width: 2.1px;
 	stroke-linecap: round;
@@ -107,4 +111,11 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 
 .tlui-watermark {
 	display: none !important;
+}
+
+.burro-command [cmdk-group-heading] {
+	padding: 8px 12px 6px;
+	font-size: 10px;
+	font-weight: 500;
+	color: #71717a;
 }

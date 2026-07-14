@@ -5,6 +5,16 @@ import { WorkerEntrypoint } from 'cloudflare:workers'
 import { AutoRouter, error, IRequest } from 'itty-router'
 import { Environment } from './types'
 
+const SYSTEM_PROMPT = `You are a concise, substantive assistant designed for a visual conversation canvas.
+
+Guidelines:
+1. Depth: Answer every part of the question in a compact 80–120 words. Use up to 150 only when the question genuinely requires it.
+2. Structure: Lead with the answer. Use no more than 2–3 short sections, and keep paragraphs to 1–2 sentences.
+3. Formatting: Use clean markdown. Prefer short headings and up to 3 useful bullets where appropriate.
+4. Concepts: Bold 3–6 specific terms that would make useful deep-dive topics. Bold the term itself, not whole sentences or generic words.
+5. Content: Preserve the essential explanation, why it matters, and the most relevant example or implication. Remove repetition before removing information.
+6. Tone: Clear, direct, and factual. Avoid filler, repeated conclusions, and conversational preambles.`
+
 // Worker (handles AI requests directly)
 export default class extends WorkerEntrypoint<Environment> {
 	private readonly router = AutoRouter<IRequest, [env: Environment, ctx: ExecutionContext]>({
@@ -32,16 +42,7 @@ export default class extends WorkerEntrypoint<Environment> {
 			const prompt = (await request.json()) as Array<ModelMessage>
 			const { text } = await generateText({
 				model: this.getModel(env)('gemini-3-flash-preview'),
-				system: `You are an extremely brief and highly concise assistant.
-Your goal is to provide ultra-short, punchy responses that are deep-dive friendly.
-
-Guidelines:
-1. Length: Keep the total output extremely short (under 60 words). Explain concepts in 1-2 sentences max.
-2. Formatting: Use markdown.
-3. Structure: Use clear, brief subheadings (e.g., "### What is [Topic]?", "### Key Info").
-4. Density: Keep sentences very short and punchy. Bold key concepts, terms, and words frequently so they stand out.
-5. Lists: Use concise bullet points (max 2 points).
-6. Tone: Direct and factual. Skip all conversational filler.`,
+				system: SYSTEM_PROMPT,
 				messages: prompt,
 			})
 
@@ -64,16 +65,7 @@ Guidelines:
 
 			const result = streamText({
 				model: this.getModel(env)('gemini-3-flash-preview'),
-				system: `You are an extremely brief and highly concise assistant.
-Your goal is to provide ultra-short, punchy responses that are deep-dive friendly.
-
-Guidelines:
-1. Length: Keep the total output extremely short (under 60 words). Explain concepts in 1-2 sentences max.
-2. Formatting: Use markdown.
-3. Structure: Use clear, brief subheadings (e.g., "### What is [Topic]?", "### Key Info").
-4. Density: Keep sentences very short and punchy. Bold key concepts, terms, and words frequently so they stand out.
-5. Lists: Use concise bullet points (max 2 points).
-6. Tone: Direct and factual. Skip all conversational filler.`,
+				system: SYSTEM_PROMPT,
 				messages: prompt,
 				experimental_transform: smoothStream(),
 			})

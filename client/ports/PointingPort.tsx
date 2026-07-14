@@ -1,9 +1,8 @@
 import { createShapeId, StateNode, TLPointerEventInfo, TLShapeId } from 'tldraw'
 import { createOrUpdateConnectionBinding } from '../connection/ConnectionBindingUtil.tsx'
 import { getNextConnectionIndex } from '../connection/keepConnectionsAtBottom.tsx'
-import { TREE_COLUMN_GAP_PX } from '../constants.tsx'
-import { layoutConversationTree } from '../nodes/layoutConversationTree.ts'
-import { getNodePortConnections, getNodePorts } from '../nodes/nodePorts.tsx'
+import { createFollowUpNode } from '../nodes/createFollowUpNode.ts'
+import { getNodePortConnections } from '../nodes/nodePorts.tsx'
 import { PortId } from './Port.tsx'
 
 // Information about which port is being pointed at
@@ -99,78 +98,6 @@ export class PointingPort extends StateNode {
 	private onClick() {
 		// Only handle clicks on start ports (output ports)
 		if (this.info?.terminal !== 'start') return
-
-		// Get the bounds of the source node
-		const bounds = this.editor.getShapePageBounds(this.info!.shapeId)
-		if (!bounds) return
-
-		// Seed the card in the next tree column. The full tree layout below will
-		// centre it among any existing siblings.
-		const targetPositionInPageSpace = {
-			x: bounds.right + TREE_COLUMN_GAP_PX,
-			y: bounds.midY,
-		}
-
-		// Create a connection shape
-		const connectionShapeId = createShapeId()
-		this.editor.createShape({
-			type: 'connection',
-			id: connectionShapeId,
-			x: bounds.right,
-			y: bounds.top,
-			index: getNextConnectionIndex(this.editor),
-		})
-
-		// Bind the connection to the source port
-		createOrUpdateConnectionBinding(this.editor, connectionShapeId, this.info!.shapeId, {
-			portId: this.info!.portId,
-			terminal: 'start',
-		})
-
-		// Position the connection end point where the new node will be
-		const targetPositionInConnectionSpace = this.editor.getPointInShapeSpace(
-			connectionShapeId,
-			targetPositionInPageSpace
-		)
-
-		this.editor.updateShape({
-			id: connectionShapeId,
-			type: 'connection',
-			props: {
-				end: targetPositionInConnectionSpace.toJson(),
-			},
-		})
-
-		const newNodeId = createShapeId()
-		this.editor.createShape({
-			type: 'node',
-			id: newNodeId,
-			x: targetPositionInPageSpace.x,
-			y: targetPositionInPageSpace.y,
-			props: {
-				node: { type: 'message', userMessage: '', assistantMessage: '' },
-			},
-		})
-		this.editor.select(newNodeId)
-
-		// Position the node so its input port aligns with the connection end
-		const ports = getNodePorts(this.editor, newNodeId)
-		const firstInputPort = Object.values(ports).find((p) => p.terminal === 'end')
-		if (firstInputPort) {
-			this.editor.updateShape({
-				id: newNodeId,
-				type: 'node',
-				x: targetPositionInPageSpace.x - firstInputPort.x,
-				y: targetPositionInPageSpace.y - firstInputPort.y,
-			})
-
-			// Connect the new node to the connection
-			createOrUpdateConnectionBinding(this.editor, connectionShapeId, newNodeId, {
-				portId: firstInputPort.id,
-				terminal: 'end',
-			})
-
-			layoutConversationTree(this.editor, this.info!.shapeId)
-		}
+		createFollowUpNode(this.editor, this.info.shapeId)
 	}
 }
