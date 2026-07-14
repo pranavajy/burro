@@ -251,7 +251,7 @@ function DockButton({
 			onClick={onClick}
 			className={`flex h-9 w-9 items-center justify-center rounded-[11px] transition-colors ${
 				active
-						? 'bg-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+						? 'bg-violet-600 text-white shadow-[0_7px_18px_rgba(109,40,217,0.3),inset_0_1px_0_rgba(255,255,255,0.12)]'
 						: 'text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'
 			}`}
 			whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}

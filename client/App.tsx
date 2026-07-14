@@ -37,13 +37,7 @@ const components: TLComponents = {
 				<WorkflowToolbar />
 			</div>
 
-			{/* Actions toolbar (undo/redo/delete/menu) positioned in the top-right corner */}
-			<div className="fixed top-4 right-4 z-[999] pointer-events-auto bg-[#1C1C1C] border border-[#2C2C2C] rounded-xl p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center">
-				<TldrawUiToolbar className="!p-0 !bg-transparent !border-0" label="Actions">
-					<DefaultQuickActions />
-					<DefaultActionsMenu />
-				</TldrawUiToolbar>
-			</div>
+			<CanvasActionsToolbar />
 		</>
 	),
 
@@ -63,6 +57,25 @@ const components: TLComponents = {
 		if (!shouldShowStylePanel) return
 		return <DefaultStylePanel />
 	},
+}
+
+function CanvasActionsToolbar() {
+	return (
+		<div className="fixed right-4 top-4 z-[999] flex items-center gap-1 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
+			<button
+				type="button"
+				onClick={() => window.dispatchEvent(new CustomEvent('burro:new-canvas'))}
+				className="flex h-9 items-center gap-2 rounded-[11px] px-3 text-[12px] font-medium tracking-[-0.01em] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+			>
+				<Plus className="h-3.5 w-3.5" />
+				New canvas
+			</button>
+			<TldrawUiToolbar className="!border-0 !bg-transparent !p-0" label="Canvas actions">
+				<DefaultQuickActions />
+				<DefaultActionsMenu />
+			</TldrawUiToolbar>
+		</div>
+	)
 }
 
 const options: Partial<TldrawOptions> = {
@@ -186,6 +199,12 @@ function App() {
 		setWorkspaces((prev) => [workspace, ...prev])
 		setCurrentWorkspaceId(workspace.id)
 	}, [workspaces])
+
+	useEffect(() => {
+		const handleNewCanvas = () => createWorkspace()
+		window.addEventListener('burro:new-canvas', handleNewCanvas)
+		return () => window.removeEventListener('burro:new-canvas', handleNewCanvas)
+	}, [createWorkspace])
 
 	const deleteWorkspace = useCallback(
 		(id: string) => {
@@ -366,10 +385,10 @@ function App() {
 														setIsSidebarOpen(false)
 													}
 												}}
-												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-2xl px-4 pb-4 pt-5 outline-none backdrop-blur-xl transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-white/20 ${
+												className={`group relative mb-3 cursor-pointer overflow-hidden rounded-2xl border px-4 pb-4 pt-5 outline-none backdrop-blur-xl transition-[background-color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-white/20 ${
 													isActive
-														? 'bg-white/[0.075] text-zinc-100 shadow-[0_14px_34px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.045)]'
-														: 'bg-white/[0.028] text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.025)] hover:bg-white/[0.052] hover:shadow-[0_14px_32px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.04)]'
+														? 'border-white/[0.14] bg-white/[0.075] text-zinc-100 shadow-[0_14px_34px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.045)]'
+														: 'border-transparent bg-white/[0.028] text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.025)] hover:bg-white/[0.052] hover:shadow-[0_14px_32px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.04)]'
 												}`}
 												initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }}
 												animate={{ opacity: 1, x: 0 }}
