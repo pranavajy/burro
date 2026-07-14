@@ -22,6 +22,37 @@ body, .tl-container, .tl-canvas, .tl-theme__dark {
 }
 .tl-container .tl-theme__dark {
 	--tl-color-handle-fill: hsla(209, 100%, 57%, 0.2);
+	--tl-color-grid: #2e2e31;
+}
+
+/* ---- Figma-style floating dock ---- */
+.tlui-main-toolbar__tools {
+	background: #1e1e20;
+	border: 1px solid #2c2c2e;
+	border-radius: 16px;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+	padding: 4px 6px;
+}
+
+.tlui-main-toolbar .tlui-button__tool {
+	height: 44px;
+	width: 44px;
+	color: #d4d4d8;
+}
+
+.tlui-main-toolbar .tlui-button__tool::after {
+	inset: 4px;
+	border-radius: 10px;
+}
+
+.tlui-main-toolbar .tlui-button__tool[aria-pressed='true'],
+.tlui-main-toolbar .tlui-button__tool[aria-pressed='true']:not(:disabled, [data-disabled], :focus-visible):active {
+	color: #ffffff;
+}
+
+.tlui-main-toolbar .tlui-button__tool[aria-pressed='true']:not(:disabled, [data-disabled])::after {
+	background: #8b5cf6;
+	opacity: 1;
 }
 
 .NodeShape {
