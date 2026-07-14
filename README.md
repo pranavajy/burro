@@ -28,6 +28,19 @@
 
 Burro is an open-source, full-stack branching conversation canvas that lets you craft, connect, and explore AI-guided dialogues on an infinite workspace. Built on top of **tldraw**, it converts conversation segments into interactive node structures, allowing you to branch prompts, visualize context lineages, and query AI streaming responses in real-time.
 
+## Preview
+
+<p align="center">
+  <img src="./ui_screenshots/canvas_view.png" alt="Burro Infinite Canvas View" width="800">
+</p>
+
+<p align="center">
+  <img src="./ui_screenshots/sidebar_view.png" alt="Burro Side Menu" width="390">
+  <img src="./ui_screenshots/polaroid_cards.png" alt="Wikipedia Polaroid Cards" width="390">
+</p>
+
+---
+
 ## Features
 
 *   **Visual Chat Trees**: Design custom branching conversation threads on an infinite tldraw canvas.
