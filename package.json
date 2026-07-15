@@ -2,43 +2,26 @@
 	"name": "burro",
 	"private": true,
 	"version": "0.0.0",
+	"type": "module",
+	"packageManager": "pnpm@10.30.3",
+	"scripts": {
+		"build": "turbo build",
+		"dev": "turbo dev",
+		"lint": "turbo lint",
+		"test": "turbo test",
+		"web:dev": "pnpm --filter @burro/web dev",
+		"desktop:dev": "pnpm --filter @burro/desktop dev"
+	},
+	"devDependencies": {
+		"eslint": "^9.39.1",
+		"eslint-plugin-react-hooks": "^7.0.1",
+		"turbo": "^2.6.3",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.53.0"
+	},
 	"author": {
 		"name": "Pranav Ajay",
 		"email": "pranavajay2002@gmail.com"
 	},
-	"license": "MIT",
-	"type": "module",
-	"scripts": {
-		"build": "tsc && vite build",
-		"dev": "vite --host",
-		"preview": "vite preview"
-	},
-	"dependencies": {
-		"@ai-sdk/anthropic": "^2.0.86",
-		"@ai-sdk/google": "^2.0.14",
-		"@ai-sdk/openai": "^2.0.112",
-		"@cloudflare/vite-plugin": "^1.29.1",
-		"ai": "^5.0.63",
-		"classnames": "^2.5.1",
-		"cmdk": "^1.1.1",
-		"framer-motion": "^12.42.2",
-		"itty-router": "^5.0.18",
-		"lucide-react": "^1.24.0",
-		"radix-ui": "^1.4.2",
-		"react": "^19.2.1",
-		"react-dom": "^19.2.1",
-		"tldraw": "^5.2.4",
-		"wrangler": "^4.75.0",
-		"zod": "^4.1.8"
-	},
-	"devDependencies": {
-		"@cloudflare/workers-types": "^5.20260708.1",
-		"@tailwindcss/vite": "^4.3.2",
-		"@types/react": "^19.2.7",
-		"@types/react-dom": "^19.2.3",
-		"@vitejs/plugin-react": "^6.0.1",
-		"tailwindcss": "^4.3.2",
-		"typescript": "^5.8.3",
-		"vite": "^8.0.16"
-	}
+	"license": "MIT"
 }

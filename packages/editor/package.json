@@ -1,0 +1,33 @@
+{
+	"name": "@burro/editor",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"lint": "eslint src",
+		"test": "echo 'No editor tests configured'"
+	},
+	"dependencies": {
+		"@burro/core": "workspace:*",
+		"@burro/ui": "workspace:*",
+		"ai": "^5.0.63",
+		"classnames": "^2.5.1",
+		"cmdk": "^1.1.1",
+		"framer-motion": "^12.42.2",
+		"lucide-react": "^1.24.0",
+		"react": "^19.2.1",
+		"react-dom": "^19.2.1",
+		"tldraw": "^5.2.4"
+	},
+	"devDependencies": {
+		"@burro/config": "workspace:*",
+		"@types/react": "^19.2.7",
+		"@types/react-dom": "^19.2.3",
+		"eslint": "^9.39.1",
+		"typescript": "^5.8.3"
+	}
+}
