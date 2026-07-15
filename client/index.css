@@ -13,34 +13,35 @@ html {
 }
 
 .landing-shell {
-	--landing-max: 1200px;
+	--landing-max: 1280px;
 	--landing-gutter: clamp(20px, 4vw, 48px);
 	--landing-section: clamp(96px, 11vw, 152px);
-	--landing-line: rgba(255, 255, 255, 0.06);
+	--landing-line: rgba(255, 255, 255, 0.075);
 	font-family: 'Inter', sans-serif;
 }
 
 .landing-container {
 	width: min(calc(100% - (var(--landing-gutter) * 2)), var(--landing-max));
 	margin-inline: auto;
+	box-sizing: border-box;
+	border-inline: 1px solid var(--landing-line);
+	padding-inline: clamp(20px, 3vw, 40px);
 }
 
 .landing-hero {
-	padding-top: clamp(96px, 12vw, 152px);
-	padding-bottom: clamp(72px, 8vw, 104px);
+	padding-block: 0;
 }
 
 .landing-section {
 	padding-block: var(--landing-section);
 }
 
-.landing-grid {
-	opacity: 0.42;
+.landing-pricing-grid {
 	background-image:
-		linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+		linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
 	background-size: 64px 64px;
-	mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.36) 46%, transparent 88%);
+	background-position: center;
 }
 
 .landing-eyebrow,
@@ -53,6 +54,31 @@ html {
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 	color: #71717a;
+}
+
+.landing-release-pill {
+	display: inline-flex;
+	width: fit-content;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.075);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.025);
+	padding: 6px 10px;
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #71717a;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.landing-hero-canvas {
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.085);
+	border-radius: 16px;
+	background: rgba(24, 24, 27, 0.88);
+	box-shadow: 0 34px 100px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .landing-product-frame {
