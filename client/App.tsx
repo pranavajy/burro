@@ -12,13 +12,18 @@ import {
 	useEditor,
 	useValue,
 } from 'tldraw'
-import { Menu, PanelLeft, Plus, Trash2, Search, Maximize2, Minimize2, Settings2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Menu, PanelLeft, Plus, Trash2, Search, Maximize2, Minimize2, Settings2 } from 'lucide-react'
 import {
 	AIProviderConfig,
+	AIProviderId,
+	DEFAULT_PROVIDER_CONFIGS,
 	getStoredAIProviderConfig,
+	getStoredAIProviderConfigs,
 	isAIProviderReady,
+	saveAIProviderConfig,
 } from './ai/providerConfig.ts'
 import { ProviderOnboarding } from './components/ProviderOnboarding.tsx'
+import { ProviderLogo } from './components/ProviderLogo.tsx'
 import { overrides, WorkflowToolbar } from './components/WorkflowToolbar.tsx'
 import { ConnectionBindingUtil } from './connection/ConnectionBindingUtil.tsx'
 import { ConnectionShapeUtil } from './connection/ConnectionShapeUtil.tsx'
@@ -221,6 +226,14 @@ function getWorkspacePreview(editor: Editor): WorkspacePreview {
 
 const WORKSPACES_STORAGE_KEY = 'burro.workspaces'
 const CURRENT_WORKSPACE_KEY = 'burro.currentWorkspace'
+const PROVIDER_LABELS = {
+	trial: 'Free trial',
+	openai: 'OpenAI',
+	anthropic: 'Claude',
+	google: 'Gemini',
+	ollama: 'Ollama',
+	custom: 'Custom agent',
+} as const
 
 function loadWorkspaces(): Workspace[] {
 	try {
@@ -254,7 +267,11 @@ function App() {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 	const [isCommandOpen, setIsCommandOpen] = useState(false)
 	const [providerConfig, setProviderConfig] = useState<AIProviderConfig | null>(getStoredAIProviderConfig)
+	const [providerProfiles, setProviderProfiles] = useState<AIProviderConfig[]>(getStoredAIProviderConfigs)
+	const [providerDialogConfig, setProviderDialogConfig] = useState<AIProviderConfig | null>(getStoredAIProviderConfig)
 	const [isProviderOpen, setIsProviderOpen] = useState(() => !isAIProviderReady(getStoredAIProviderConfig()))
+	const [providerDialogView, setProviderDialogView] = useState<'providers' | 'details'>('details')
+	const [isProviderSwitcherOpen, setIsProviderSwitcherOpen] = useState(false)
 	const [workspaces, setWorkspaces] = useState<Workspace[]>(loadWorkspaces)
 	const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>(() => {
 		const stored = localStorage.getItem(CURRENT_WORKSPACE_KEY)
@@ -282,10 +299,14 @@ function App() {
 	}, [])
 
 	useEffect(() => {
-		const openProviderSettings = () => setIsProviderOpen(true)
+		const openProviderSettings = () => {
+			setProviderDialogConfig(providerConfig)
+			setProviderDialogView('details')
+			setIsProviderOpen(true)
+		}
 		window.addEventListener('burro:provider-settings', openProviderSettings)
 		return () => window.removeEventListener('burro:provider-settings', openProviderSettings)
-	}, [])
+	}, [providerConfig])
 
 	const touchWorkspace = useCallback((id: string, preview: WorkspacePreview) => {
 		setWorkspaces((prev) =>
@@ -377,6 +398,29 @@ function App() {
 	)
 
 	const sortedWorkspaces = [...workspaces].sort((a, b) => b.updatedAt - a.updatedAt)
+	const providerName = providerConfig ? PROVIDER_LABELS[providerConfig.id] : 'Choose AI provider'
+	const providerModel = providerConfig?.model || 'No model selected'
+	const providerIds = Object.keys(PROVIDER_LABELS) as AIProviderId[]
+
+	const openProviderSetup = (id: AIProviderId) => {
+		const stored = providerProfiles.find((profile) => profile.id === id)
+		setProviderDialogConfig(stored ?? { ...DEFAULT_PROVIDER_CONFIGS[id] })
+		setProviderDialogView('details')
+		setIsProviderSwitcherOpen(false)
+		setIsProviderOpen(true)
+		setIsSidebarOpen(false)
+	}
+
+	const activateProvider = (config: AIProviderConfig) => {
+		if (!isAIProviderReady(config)) {
+			openProviderSetup(config.id)
+			return
+		}
+		saveAIProviderConfig(config)
+		setProviderConfig(config)
+		setProviderProfiles(getStoredAIProviderConfigs())
+		setIsProviderSwitcherOpen(false)
+	}
 
 	return (
 		<div className="workflow" style={{ position: 'fixed', inset: 0 }}>
@@ -520,7 +564,7 @@ function App() {
 								</motion.button>
 							</div>
 
-							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-3">
+							<div className="scrollbar-none flex-grow overflow-y-auto px-2 pb-20">
 								<AnimatePresence initial={false}>
 									{sortedWorkspaces.map((workspace, workspaceIndex) => {
 										const isActive = workspace.id === currentWorkspaceId
@@ -605,6 +649,80 @@ function App() {
 								</AnimatePresence>
 							</div>
 
+							<div className="absolute bottom-3 left-3 right-3 z-10 flex items-center gap-0.5 rounded-[16px] border border-white/[0.12] bg-[rgba(35,35,39,0.9)] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.56),0_2px_10px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-[32px] backdrop-saturate-150">
+								<AnimatePresence>
+									{isProviderSwitcherOpen && (
+										<motion.div
+											initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.98 }}
+											animate={{ opacity: 1, y: 0, scale: 1 }}
+											exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 5, scale: 0.985 }}
+											transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+											className="absolute bottom-[calc(100%+8px)] left-0 right-0 isolate overflow-hidden rounded-[16px] border border-white/[0.13] bg-[linear-gradient(145deg,rgba(47,47,52,0.985),rgba(29,29,33,0.985))] p-1.5 shadow-[0_22px_60px_rgba(0,0,0,0.68),0_2px_12px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[32px] backdrop-saturate-150"
+										>
+											{providerIds.map((id) => {
+												const profile = providerProfiles.find((item) => item.id === id)
+												const isActive = providerConfig?.id === id
+												const isConfigured = Boolean(profile && isAIProviderReady(profile))
+												return (
+													<button
+														key={id}
+														type="button"
+														onClick={() => profile ? activateProvider(profile) : openProviderSetup(id)}
+														className={`flex h-10 w-full items-center gap-2.5 rounded-[10px] px-2 text-left transition-colors ${isActive ? 'bg-white/[0.065]' : 'hover:bg-white/[0.045]'}`}
+													>
+														<span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${id === 'ollama' ? 'bg-white' : 'bg-white/[0.045]'}`}><ProviderLogo provider={id} className="h-4 w-4" /></span>
+														<span className="min-w-0 flex-1">
+															<span className={`block truncate text-[11px] font-medium ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{PROVIDER_LABELS[id]}</span>
+											<span className="block truncate text-[9px] text-zinc-600">{isConfigured ? profile?.model : 'Set up'}</span>
+														</span>
+														{isActive && <Check className="h-3.5 w-3.5 shrink-0 text-violet-400" />}
+													</button>
+												)
+											})}
+										</motion.div>
+									)}
+								</AnimatePresence>
+									<motion.button
+										type="button"
+										onClick={() => {
+											const profiles = getStoredAIProviderConfigs()
+											setProviderProfiles(profiles)
+											if (profiles.length === 0) {
+												setProviderDialogConfig(null)
+												setProviderDialogView('providers')
+												setIsProviderOpen(true)
+												setIsSidebarOpen(false)
+												return
+											}
+											setIsProviderSwitcherOpen((open) => !open)
+										}}
+										className="flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[11px] px-2.5 text-left text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+										whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+										whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.985 }}
+										aria-label={`Switch AI model. Currently ${providerName}, ${providerModel}`}
+									>
+										<span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${providerConfig?.id === 'ollama' ? 'bg-white' : 'bg-white/[0.045]'}`}><ProviderLogo provider={providerConfig?.id ?? 'custom'} className="h-3.5 w-3.5" /></span>
+										<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-zinc-300">{providerName}</span>
+										<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-zinc-500" strokeWidth={1.75} />
+									</motion.button>
+									<motion.button
+										type="button"
+										onClick={() => {
+											setProviderDialogConfig(providerConfig)
+											setProviderDialogView('details')
+											setIsProviderOpen(true)
+											setIsSidebarOpen(false)
+										}}
+										className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+										whileHover={shouldReduceMotion ? undefined : { y: -1, rotate: 2 }}
+										whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
+										title="Update model and API key"
+										aria-label="Update model and API key"
+									>
+										<Settings2 className="h-4 w-4" />
+									</motion.button>
+							</div>
+
 						</motion.aside>
 					</>
 				)}
@@ -673,10 +791,14 @@ function App() {
 			<AnimatePresence>
 				{isProviderOpen && (
 					<ProviderOnboarding
-						initialConfig={providerConfig}
+						initialConfig={providerDialogConfig}
+						initialView={providerDialogView}
 						canClose={isAIProviderReady(providerConfig)}
+						onCancel={() => setIsProviderOpen(false)}
 						onClose={(config) => {
 							setProviderConfig(config)
+							setProviderDialogConfig(config)
+							setProviderProfiles(getStoredAIProviderConfigs())
 							setIsProviderOpen(false)
 						}}
 					/>

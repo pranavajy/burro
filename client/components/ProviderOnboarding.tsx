@@ -1,14 +1,11 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-	Bot,
 	Check,
 	ChevronLeft,
-	Cloud,
 	Copy,
 	Eye,
 	EyeOff,
 	KeyRound,
-	Laptop,
 	ShieldCheck,
 	Sparkles,
 	X,
@@ -21,10 +18,13 @@ import {
 	isAIProviderReady,
 	saveAIProviderConfig,
 } from '../ai/providerConfig'
+import { ProviderLogo } from './ProviderLogo'
 
 interface ProviderOnboardingProps {
 	initialConfig: AIProviderConfig | null
+	initialView?: 'providers' | 'details'
 	canClose: boolean
+	onCancel?: () => void
 	onClose: (config: AIProviderConfig) => void
 }
 
@@ -33,14 +33,13 @@ const PROVIDERS: Array<{
 	name: string
 	description: string
 	badge?: string
-	icon: typeof Sparkles
 }> = [
-	{ id: 'trial', name: 'Free trial', description: 'Start instantly with Burro’s hosted Gemini model.', badge: 'Fastest', icon: Sparkles },
-	{ id: 'openai', name: 'OpenAI', description: 'Use your OpenAI API key and preferred GPT model.', icon: Bot },
-	{ id: 'anthropic', name: 'Claude', description: 'Connect Anthropic with your own API key.', icon: Sparkles },
-	{ id: 'google', name: 'Gemini', description: 'Use a Google AI Studio API key with grounding.', icon: Cloud },
-	{ id: 'ollama', name: 'Ollama', description: 'Run a local or remotely hosted open model.', badge: 'Local', icon: Laptop },
-	{ id: 'custom', name: 'Any agent', description: 'Connect an OpenAI-compatible model or agent endpoint.', icon: Bot },
+	{ id: 'trial', name: 'Free trial', description: 'Start instantly with Burro’s hosted Gemini model.', badge: 'Fastest' },
+	{ id: 'openai', name: 'OpenAI', description: 'Use your OpenAI API key and preferred GPT model.' },
+	{ id: 'anthropic', name: 'Claude', description: 'Connect Anthropic with your own API key.' },
+	{ id: 'google', name: 'Gemini', description: 'Use a Google AI Studio API key with grounding.' },
+	{ id: 'ollama', name: 'Ollama', description: 'Run a local or remotely hosted open model.', badge: 'Local' },
+	{ id: 'custom', name: 'Any agent', description: 'Connect an OpenAI-compatible model or agent endpoint.' },
 ]
 
 const PROVIDER_HELP: Record<AIProviderId, { title: string; steps: string[]; keyUrl?: string }> = {
@@ -74,9 +73,11 @@ const PROVIDER_HELP: Record<AIProviderId, { title: string; steps: string[]; keyU
 	},
 }
 
-export function ProviderOnboarding({ initialConfig, canClose, onClose }: ProviderOnboardingProps) {
+export function ProviderOnboarding({ initialConfig, initialView = 'details', canClose, onCancel, onClose }: ProviderOnboardingProps) {
 	const shouldReduceMotion = useReducedMotion()
-	const [selectedId, setSelectedId] = useState<AIProviderId | null>(initialConfig?.id ?? null)
+	const [selectedId, setSelectedId] = useState<AIProviderId | null>(
+		initialView === 'providers' ? null : initialConfig?.id ?? null
+	)
 	const [config, setConfig] = useState<AIProviderConfig | null>(initialConfig)
 	const [showKey, setShowKey] = useState(false)
 	const [copied, setCopied] = useState(false)
@@ -131,7 +132,10 @@ export function ProviderOnboarding({ initialConfig, canClose, onClose }: Provide
 				{canClose && (
 					<button
 						type="button"
-						onClick={() => initialConfig && onClose(initialConfig)}
+						onClick={() => {
+							if (onCancel) onCancel()
+							else if (initialConfig) onClose(initialConfig)
+						}}
 						className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
 						aria-label="Close provider settings"
 					>
@@ -140,11 +144,7 @@ export function ProviderOnboarding({ initialConfig, canClose, onClose }: Provide
 				)}
 
 				<div className="border-b border-white/[0.06] px-7 py-6 sm:px-9">
-					<div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-400">
-						<span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-500/12"><Sparkles className="h-3.5 w-3.5" /></span>
-						AI setup
-					</div>
-					<h1 className="mt-3 text-[26px] font-semibold tracking-[-0.035em] text-zinc-100 sm:text-[30px]">
+					<h1 className="text-[26px] font-semibold tracking-[-0.035em] text-zinc-100 sm:text-[30px]">
 						{selectedId ? `Continue with ${selectedProvider?.name}` : 'Choose how Burro should think'}
 					</h1>
 					<p className="mt-2 max-w-2xl text-[13px] leading-5 text-zinc-500">
@@ -156,7 +156,7 @@ export function ProviderOnboarding({ initialConfig, canClose, onClose }: Provide
 					<AnimatePresence mode="wait" initial={false}>
 						{!selectedId ? (
 							<motion.div key="providers" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-								{PROVIDERS.map(({ id, name, description, badge, icon: Icon }) => (
+								{PROVIDERS.map(({ id, name, description, badge }) => (
 									<button
 										key={id}
 										type="button"
@@ -164,7 +164,7 @@ export function ProviderOnboarding({ initialConfig, canClose, onClose }: Provide
 										className="group relative min-h-[154px] rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-violet-400/35 hover:bg-violet-500/[0.055] hover:shadow-[0_14px_34px_rgba(0,0,0,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
 									>
 										<div className="flex items-start justify-between">
-											<span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.07] bg-[#202023] text-zinc-400 group-hover:text-violet-300"><Icon className="h-[18px] w-[18px]" /></span>
+										<span className={`flex h-10 w-10 items-center justify-center rounded-xl border text-zinc-400 group-hover:text-violet-300 ${id === 'ollama' ? 'border-white bg-white' : 'border-white/[0.07] bg-[#202023]'}`}><ProviderLogo provider={id} className="h-[18px] w-[18px]" /></span>
 											{badge && <span className="rounded-full bg-violet-500/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-violet-300">{badge}</span>}
 										</div>
 										<div className="mt-4 text-[15px] font-semibold text-zinc-200">{name}</div>
@@ -253,8 +253,8 @@ export function ProviderOnboarding({ initialConfig, canClose, onClose }: Provide
 					{selectedId ? (
 						<button type="button" onClick={() => setSelectedId(null)} className="flex h-10 items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-zinc-500 transition-colors hover:bg-white/[0.05] hover:text-zinc-300"><ChevronLeft className="h-4 w-4" /> All providers</button>
 					) : <span />}
-					<button type="button" onClick={finish} disabled={!isAIProviderReady(config)} className="h-10 rounded-xl bg-violet-600 px-5 text-[12px] font-semibold text-white shadow-[0_8px_22px_rgba(109,40,217,0.28)] transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-white/[0.05] disabled:text-zinc-700 disabled:shadow-none">
-						{selectedId === 'trial' ? 'Start free trial' : 'Save and continue'}
+					<button type="button" onClick={finish} disabled={!selectedId || !isAIProviderReady(config)} className="h-10 rounded-xl bg-violet-600 px-5 text-[12px] font-semibold text-white shadow-[0_8px_22px_rgba(109,40,217,0.28)] transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-white/[0.05] disabled:text-zinc-700 disabled:shadow-none">
+						{!selectedId ? 'Choose a provider' : selectedId === 'trial' ? 'Start free trial' : 'Save and continue'}
 					</button>
 				</div>
 			</motion.div>
