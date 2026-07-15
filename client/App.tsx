@@ -657,15 +657,15 @@ function App() {
 											animate={{ opacity: 1, y: 0, scale: 1 }}
 											exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 5, scale: 0.985 }}
 											transition={{ type: 'spring', stiffness: 460, damping: 34 }}
-											className="absolute bottom-[calc(100%+8px)] left-0 right-0 isolate overflow-hidden rounded-[16px] border border-white/[0.13] bg-[linear-gradient(145deg,rgba(47,47,52,0.985),rgba(29,29,33,0.985))] p-1.5 shadow-[0_22px_60px_rgba(0,0,0,0.68),0_2px_12px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[32px] backdrop-saturate-150"
+											className="absolute bottom-[calc(100%+8px)] left-0 right-0 overflow-hidden rounded-[16px] border border-white/[0.08] bg-[#232327] p-1.5 shadow-[0_22px_60px_rgba(0,0,0,0.68),0_2px_12px_rgba(0,0,0,0.34)]"
 										>
-											{providerIds.map((id) => {
+											{providerIds.map((id, index) => {
 												const profile = providerProfiles.find((item) => item.id === id)
 												const isActive = providerConfig?.id === id
 												const isConfigured = Boolean(profile && isAIProviderReady(profile))
 												return (
+													<div key={id}>
 													<button
-														key={id}
 														type="button"
 														onClick={() => profile ? activateProvider(profile) : openProviderSetup(id)}
 														className={`flex h-10 w-full items-center gap-2.5 rounded-[10px] px-2 text-left transition-colors ${isActive ? 'bg-white/[0.065]' : 'hover:bg-white/[0.045]'}`}
@@ -677,6 +677,8 @@ function App() {
 														</span>
 														{isActive && <Check className="h-3.5 w-3.5 shrink-0 text-violet-400" />}
 													</button>
+													{index < providerIds.length - 1 && <div className="mx-2 h-px bg-white/[0.055]" />}
+													</div>
 												)
 											})}
 										</motion.div>
