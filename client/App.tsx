@@ -12,7 +12,13 @@ import {
 	useEditor,
 	useValue,
 } from 'tldraw'
-import { Menu, PanelLeft, Plus, Trash2, Search, Maximize2, Minimize2 } from 'lucide-react'
+import { Menu, PanelLeft, Plus, Trash2, Search, Maximize2, Minimize2, Settings2 } from 'lucide-react'
+import {
+	AIProviderConfig,
+	getStoredAIProviderConfig,
+	isAIProviderReady,
+} from './ai/providerConfig.ts'
+import { ProviderOnboarding } from './components/ProviderOnboarding.tsx'
 import { overrides, WorkflowToolbar } from './components/WorkflowToolbar.tsx'
 import { ConnectionBindingUtil } from './connection/ConnectionBindingUtil.tsx'
 import { ConnectionShapeUtil } from './connection/ConnectionShapeUtil.tsx'
@@ -117,10 +123,21 @@ function CanvasActionsToolbar() {
 		requestAnimationFrame(() => layoutAllConversationTrees(editor, true))
 	}
 
-	if (isInitial) return null
-
 	return (
 		<div className="fixed right-4 top-4 z-[999] flex items-center gap-0.5 rounded-[15px] bg-[#1A1A1D]/82 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl pointer-events-auto">
+			<motion.button
+				type="button"
+				onClick={() => window.dispatchEvent(new CustomEvent('burro:provider-settings'))}
+				className="flex h-9 w-9 items-center justify-center rounded-[11px] text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+				whileHover={shouldReduceMotion ? undefined : { y: -1, scale: 1.04 }}
+				whileTap={shouldReduceMotion ? undefined : { y: 1, scale: 0.94 }}
+				transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+				title="AI provider settings"
+				aria-label="AI provider settings"
+			>
+				<Settings2 className="h-[17px] w-[17px]" />
+			</motion.button>
+			{!isInitial && <>
 			<motion.button
 				type="button"
 				onClick={() => window.dispatchEvent(new CustomEvent('burro:new-canvas'))}
@@ -150,6 +167,7 @@ function CanvasActionsToolbar() {
 			>
 				{compactMode ? <Maximize2 className="h-[17px] w-[17px]" /> : <Minimize2 className="h-[17px] w-[17px]" />}
 			</motion.button>
+			</>}
 		</div>
 	)
 }
@@ -235,6 +253,8 @@ function App() {
 	const activeEditorRef = useRef<Editor | null>(null)
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 	const [isCommandOpen, setIsCommandOpen] = useState(false)
+	const [providerConfig, setProviderConfig] = useState<AIProviderConfig | null>(getStoredAIProviderConfig)
+	const [isProviderOpen, setIsProviderOpen] = useState(() => !isAIProviderReady(getStoredAIProviderConfig()))
 	const [workspaces, setWorkspaces] = useState<Workspace[]>(loadWorkspaces)
 	const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>(() => {
 		const stored = localStorage.getItem(CURRENT_WORKSPACE_KEY)
@@ -259,6 +279,12 @@ function App() {
 		}
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
+	}, [])
+
+	useEffect(() => {
+		const openProviderSettings = () => setIsProviderOpen(true)
+		window.addEventListener('burro:provider-settings', openProviderSettings)
+		return () => window.removeEventListener('burro:provider-settings', openProviderSettings)
 	}, [])
 
 	const touchWorkspace = useCallback((id: string, preview: WorkspacePreview) => {
@@ -643,6 +669,19 @@ function App() {
 					</Command.Group>
 				</Command.List>
 			</Command.Dialog>
+
+			<AnimatePresence>
+				{isProviderOpen && (
+					<ProviderOnboarding
+						initialConfig={providerConfig}
+						canClose={isAIProviderReady(providerConfig)}
+						onClose={(config) => {
+							setProviderConfig(config)
+							setIsProviderOpen(false)
+						}}
+					/>
+				)}
+			</AnimatePresence>
 		</div>
 	)
 }

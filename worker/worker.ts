@@ -1,4 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createAnthropic } from '@ai-sdk/anthropic'
 import { ExecutionContext } from '@cloudflare/workers-types'
 import { generateText, ModelMessage, smoothStream, streamText } from 'ai'
 import { WorkerEntrypoint } from 'cloudflare:workers'
@@ -15,6 +17,20 @@ Guidelines:
 5. Content: Preserve the essential explanation, why it matters, and the most relevant example or implication. Remove repetition before removing information.
 6. Tone: Clear, direct, and factual. Avoid filler, repeated conclusions, and conversational preambles.`
 
+type AIProviderId = 'trial' | 'openai' | 'anthropic' | 'google' | 'ollama' | 'custom'
+
+interface ProviderConfig {
+	id: AIProviderId
+	model: string
+	apiKey?: string
+	baseUrl?: string
+}
+
+interface AIRequestBody {
+	messages: Array<ModelMessage>
+	provider?: ProviderConfig
+}
+
 // Worker (handles AI requests directly)
 export default class extends WorkerEntrypoint<Environment> {
 	private readonly router = AutoRouter<IRequest, [env: Environment, ctx: ExecutionContext]>({
@@ -30,20 +46,51 @@ export default class extends WorkerEntrypoint<Environment> {
 		return this.router.fetch(request, this.env, this.ctx)
 	}
 
-	private getModel(env: Environment) {
-		return createGoogleGenerativeAI({
-			apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
-		})
+	private getModel(env: Environment, config?: ProviderConfig) {
+		const provider = config?.id ?? 'trial'
+		const model = config?.model?.trim()
+
+		if (provider === 'trial') {
+			const google = createGoogleGenerativeAI({ apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY })
+			return { model: google('gemini-3.5-flash'), google }
+		}
+
+		if (!model) throw new Error('A model ID is required for the selected provider.')
+
+		if (provider === 'google') {
+			if (!config?.apiKey) throw new Error('A Google AI API key is required.')
+			const google = createGoogleGenerativeAI({ apiKey: config.apiKey })
+			return { model: google(model), google }
+		}
+
+		if (provider === 'openai') {
+			if (!config?.apiKey) throw new Error('An OpenAI API key is required.')
+			return { model: createOpenAI({ apiKey: config.apiKey }).chat(model) }
+		}
+
+		if (provider === 'anthropic') {
+			if (!config?.apiKey) throw new Error('An Anthropic API key is required.')
+			return { model: createAnthropic({ apiKey: config.apiKey })(model) }
+		}
+
+		throw new Error('Local and custom compatible providers must be called directly by the client.')
+	}
+
+	private async getRequestBody(request: IRequest): Promise<AIRequestBody> {
+		const body = (await request.json()) as AIRequestBody | Array<ModelMessage>
+		if (Array.isArray(body)) return { messages: body }
+		if (!Array.isArray(body.messages)) throw new Error('A messages array is required.')
+		return body
 	}
 
 	// Generate a new response from the model
 	private async generate(request: IRequest, env: Environment) {
 		try {
-			const prompt = (await request.json()) as Array<ModelMessage>
+			const { messages, provider } = await this.getRequestBody(request)
 			const { text } = await generateText({
-				model: this.getModel(env)('gemini-3-flash-preview'),
+				model: this.getModel(env, provider).model,
 				system: SYSTEM_PROMPT,
-				messages: prompt,
+				messages,
 			})
 
 			// Send back the response as a JSON object
@@ -61,19 +108,26 @@ export default class extends WorkerEntrypoint<Environment> {
 	// Stream a new response from the model
 	private async stream(request: IRequest, env: Environment): Promise<Response> {
 		try {
-			const prompt = (await request.json()) as Array<ModelMessage>
-			const google = this.getModel(env)
+			const { messages, provider } = await this.getRequestBody(request)
+			const resolved = this.getModel(env, provider)
 
-			const result = streamText({
-				model: google('gemini-3-flash-preview'),
-				system: SYSTEM_PROMPT,
-				messages: prompt,
-				tools: {
-					google_search: google.tools.googleSearch({}),
-				},
-				toolChoice: { type: 'tool', toolName: 'google_search' },
-				experimental_transform: smoothStream(),
-			})
+			const result = resolved.google
+				? streamText({
+						model: resolved.model,
+						system: SYSTEM_PROMPT,
+						messages,
+						tools: {
+							google_search: resolved.google.tools.googleSearch({}),
+						},
+						toolChoice: { type: 'tool', toolName: 'google_search' },
+						experimental_transform: smoothStream(),
+					})
+				: streamText({
+						model: resolved.model,
+						system: SYSTEM_PROMPT,
+						messages,
+						experimental_transform: smoothStream(),
+					})
 
 			const encoder = new TextEncoder()
 			const stream = new ReadableStream({

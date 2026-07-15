@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { T, useEditor } from 'tldraw'
 import { ArrowUp, BookOpen, ChevronDown, Compass, ExternalLink, Library, Plus, Route, Scale, Sparkles, X } from 'lucide-react'
+import { getStoredAIProviderConfig, isAIProviderReady } from '../../ai/providerConfig'
 import { NODE_WIDTH_PX } from '../../constants'
 import { createFollowUpNode } from '../createFollowUpNode'
 import { createSourceCard } from '../createSourceCard'
@@ -349,6 +350,12 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 		// 3. send prompt to ai
 		// 4. update node with assistant message
 
+		const provider = getStoredAIProviderConfig()
+		if (!isAIProviderReady(provider)) {
+			window.dispatchEvent(new CustomEvent('burro:provider-settings'))
+			return
+		}
+
 		const messages: ModelMessage[] = []
 
 		const connectedNodeShapes = getAllConnectedNodes(editor, shape, 'end')
@@ -397,11 +404,70 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 		// stream the response and append as chunks arrive
 		;(async () => {
 			try {
+				if (provider && (provider.id === 'ollama' || provider.id === 'custom')) {
+					const baseUrl = provider.baseUrl!.replace(/\/+$/, '')
+					const response = await fetch(`${baseUrl}/chat/completions`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${provider.apiKey || 'ollama'}`,
+						},
+						body: JSON.stringify({
+							model: provider.model,
+							messages: [
+								{
+									role: 'system',
+									content: 'Answer concisely in 70–100 words. Lead with the answer, use clean markdown, and bold 3–6 useful deep-dive concepts.',
+								},
+								...messages,
+							],
+							stream: true,
+						}),
+					})
+					if (!response.ok) {
+						throw new Error((await response.text()) || `Provider request failed (${response.status})`)
+					}
+					if (!response.body) throw new Error('The provider returned an empty response.')
+
+					const reader = response.body.getReader()
+					const decoder = new TextDecoder()
+					let buffer = ''
+					let accumulatedText = ''
+					while (true) {
+						const { value, done } = await reader.read()
+						if (done) break
+						buffer += decoder.decode(value, { stream: true })
+						const lines = buffer.split('\n')
+						buffer = lines.pop() ?? ''
+						for (const line of lines) {
+							if (!line.startsWith('data:')) continue
+							const data = line.slice(5).trim()
+							if (!data || data === '[DONE]') continue
+							try {
+								const chunk = JSON.parse(data)
+								const text = chunk.choices?.[0]?.delta?.content
+								if (typeof text !== 'string') continue
+								accumulatedText += text
+								updateNode<MessageNode>(editor, shape, (currentNode) => ({
+									...currentNode,
+									assistantMessage: accumulatedText,
+								}))
+							} catch {
+								// Ignore non-JSON keepalive lines from compatible servers.
+							}
+						}
+					}
+					return
+				}
+
 				const response = await fetch('/stream', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(messages),
+					body: JSON.stringify({ messages, provider }),
 				})
+				if (!response.ok) {
+					throw new Error((await response.text()) || `Provider request failed (${response.status})`)
+				}
 				if (!response.body) return
 
 				const reader = response.body.getReader()
@@ -432,6 +498,10 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 							}))
 						} else if (event === 'error') {
 							console.error('Response stream error:', data.message)
+							updateNode<MessageNode>(editor, shape, (currentNode) => ({
+								...currentNode,
+								assistantMessage: `The selected AI provider rejected the request. ${typeof data.message === 'string' ? data.message : 'Check your API key and model ID.'}`,
+							}))
 						}
 					} catch (error) {
 						console.error('Could not parse response event:', error)
@@ -450,6 +520,14 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				if (eventBuffer.trim()) processEvent(eventBuffer)
 			} catch (e) {
 				console.error(e)
+				const hint = provider?.id === 'ollama'
+					? 'Make sure Ollama is running, the model is installed, and OLLAMA_ORIGINS allows this Burro URL.'
+					: 'Check your provider settings and try again.'
+				const detail = e instanceof Error ? `${e.message} ${hint}` : hint
+				updateNode<MessageNode>(editor, shape, (currentNode) => ({
+					...currentNode,
+					assistantMessage: `Could not reach the selected AI provider. ${detail}`,
+				}))
 			} finally {
 				layoutConversationTree(editor, shape.id)
 			}
