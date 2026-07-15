@@ -29,6 +29,7 @@ export default function App() {
 	const storeCleanupRef = useRef<(() => void) | null>(null)
 	const dirtyRef = useRef(false)
 	const filePathRef = useRef<string | null>(null)
+	const [isDirty, setIsDirty] = useState(false)
 
 	useEffect(() => {
 		void Promise.all([
@@ -51,7 +52,17 @@ export default function App() {
 		const result = await window.burroDesktop.saveDocument(content, mode)
 		if (!result.canceled) {
 			dirtyRef.current = false
+			setIsDirty(false)
 			filePathRef.current = result.filePath
+			setBoot((current) => current ? {
+				...current,
+				document: {
+					...current.document,
+					filePath: result.filePath,
+					displayName: result.displayName,
+					dirty: false,
+				},
+			} : current)
 		}
 	}, [serializedSnapshot])
 
@@ -92,6 +103,7 @@ export default function App() {
 			() => {
 				if (dirtyRef.current || !filePathRef.current) return
 				dirtyRef.current = true
+				setIsDirty(true)
 				void window.burroDesktop.setDocumentDirty(true)
 			},
 			{ scope: 'document', source: 'user' }
@@ -110,15 +122,26 @@ export default function App() {
 
 	return (
 		<div className="desktop-shell" data-platform={boot.platform}>
-			<BurroApp bootDocument={bootDocument} onActiveEditorChange={handleActiveEditorChange} />
-			<div className="desktop-drag-region" aria-hidden />
-			{boot.platform !== 'darwin' && (
-				<div className="desktop-window-controls">
-					<button type="button" onClick={() => void window.burroDesktop.minimizeWindow()} aria-label="Minimize">−</button>
-					<button type="button" onClick={() => void window.burroDesktop.toggleMaximizeWindow()} aria-label="Maximize">□</button>
-					<button type="button" className="desktop-close" onClick={() => void window.burroDesktop.closeWindow()} aria-label="Close">×</button>
+			<header className="desktop-titlebar">
+				<div className="desktop-titlebar-brand" aria-label="Burro">
+					<span className="desktop-titlebar-mark">b</span>
+					<span>burro<span className="desktop-titlebar-dot">.</span></span>
 				</div>
-			)}
+				<div className="desktop-document-title">
+					{isDirty && <span className="desktop-dirty-dot" aria-label="Unsaved changes" />}
+					<span>{boot.document.displayName}</span>
+				</div>
+				{boot.platform !== 'darwin' ? (
+					<div className="desktop-window-controls">
+						<button type="button" onClick={() => void window.burroDesktop.minimizeWindow()} aria-label="Minimize">−</button>
+						<button type="button" onClick={() => void window.burroDesktop.toggleMaximizeWindow()} aria-label="Maximize">□</button>
+						<button type="button" className="desktop-close" onClick={() => void window.burroDesktop.closeWindow()} aria-label="Close">×</button>
+					</div>
+				) : <div className="desktop-titlebar-spacer" aria-hidden />}
+			</header>
+			<main className="desktop-content">
+				<BurroApp contained bootDocument={bootDocument} onActiveEditorChange={handleActiveEditorChange} />
+			</main>
 		</div>
 	)
 }

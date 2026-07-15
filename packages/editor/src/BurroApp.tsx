@@ -274,11 +274,13 @@ export interface BurroBootDocument {
 
 export interface BurroAppProps {
 	bootDocument?: BurroBootDocument
+	/** Render inside a positioned host instead of occupying the browser viewport. */
+	contained?: boolean
 	/** Called whenever a canvas editor mounts (including on workspace switch). */
 	onActiveEditorChange?: (editor: Editor) => void
 }
 
-export function BurroApp({ bootDocument, onActiveEditorChange }: BurroAppProps = {}) {
+export function BurroApp({ bootDocument, contained = false, onActiveEditorChange }: BurroAppProps = {}) {
 	const shouldReduceMotion = useReducedMotion()
 	const activeEditorRef = useRef<Editor | null>(null)
 	const bootContentLoadedRef = useRef(false)
@@ -449,7 +451,7 @@ export function BurroApp({ bootDocument, onActiveEditorChange }: BurroAppProps =
 	}
 
 	return (
-		<div className="workflow" style={{ position: 'fixed', inset: 0 }}>
+		<div className="workflow" style={{ position: contained ? 'absolute' : 'fixed', inset: 0 }}>
 			<Tldraw
 				key={currentWorkspaceId}
 				persistenceKey={currentWorkspaceId}
@@ -480,8 +482,8 @@ export function BurroApp({ bootDocument, onActiveEditorChange }: BurroAppProps =
 						const viewportCenter = editorInstance.getViewportPageBounds().center
 						editorInstance.createShape({
 							type: 'node',
-							x: viewportCenter.x - 280,
-							y: viewportCenter.y - 215,
+							x: viewportCenter.x - 260,
+							y: viewportCenter.y - 205,
 						})
 					}
 

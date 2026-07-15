@@ -573,11 +573,39 @@ function MessageNodeComponent({ node, shape }: NodeComponentProps<MessageNode>) 
 				eventBuffer += decoder.decode()
 				if (eventBuffer.trim()) processEvent(eventBuffer)
 			} catch (e) {
-				console.error(e)
-				const hint = provider?.id === 'ollama'
-					? 'Make sure Ollama is running, the model is installed, and OLLAMA_ORIGINS allows this Burro URL.'
+				let failure: unknown = e
+				const failureMessage = e instanceof Error ? e.message : ''
+				const shouldTryOfflineFallback = Boolean(
+					desktopApi &&
+					provider?.id !== 'ollama' &&
+					(isOffline || e instanceof TypeError || /failed to fetch|networkerror|err_internet|err_network/i.test(failureMessage))
+				)
+
+				if (shouldTryOfflineFallback && desktopApi) {
+					const configuredOllama = getStoredAIProviderConfigs().find(
+						(config) => config.id === 'ollama' && isAIProviderReady(config)
+					)
+					const fallback = configuredOllama ?? { ...DEFAULT_PROVIDER_CONFIGS.ollama }
+					try {
+						await runCompatibleChat(fallback, messages, (text) => {
+							updateNode<MessageNode>(editor, shape, (currentNode) => ({
+								...currentNode,
+								assistantMessage: text,
+							}))
+						}, desktopApi)
+						console.info('Hosted AI unavailable; answered with local Ollama.')
+						return
+					} catch (fallbackError) {
+						const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Ollama could not be reached.'
+						failure = new Error(`${failureMessage || 'The hosted provider is unavailable'} Ollama fallback also failed: ${fallbackMessage}`)
+					}
+				}
+
+				console.error(failure)
+				const hint = provider?.id === 'ollama' || shouldTryOfflineFallback
+					? 'Make sure Ollama is running and the configured model is installed.'
 					: 'Check your provider settings and try again.'
-				const detail = e instanceof Error ? `${e.message} ${hint}` : hint
+				const detail = failure instanceof Error ? `${failure.message} ${hint}` : hint
 				updateNode<MessageNode>(editor, shape, (currentNode) => ({
 					...currentNode,
 					assistantMessage: `Could not reach the selected AI provider. ${detail}`,
