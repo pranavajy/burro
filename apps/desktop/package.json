@@ -1,0 +1,67 @@
+{
+	"name": "@burro/desktop",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Burro desktop",
+	"main": "./out/main/index.js",
+	"type": "module",
+	"scripts": {
+		"dev": "electron-vite dev",
+		"build": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json && electron-vite build",
+		"lint": "eslint src electron.vite.config.ts",
+		"test": "echo 'No desktop tests configured'",
+		"package": "pnpm build && electron-builder",
+		"package:mac": "pnpm build && electron-builder --mac",
+		"package:win": "pnpm build && electron-builder --win",
+		"package:linux": "pnpm build && electron-builder --linux"
+	},
+	"dependencies": {
+		"@burro/core": "workspace:*",
+		"@burro/editor": "workspace:*",
+		"electron-updater": "^6.3.9",
+		"react": "^19.2.1",
+		"react-dom": "^19.2.1",
+		"tldraw": "^5.2.4"
+	},
+	"devDependencies": {
+		"@burro/config": "workspace:*",
+		"@tailwindcss/vite": "^4.3.2",
+		"@types/node": "^24.0.0",
+		"@types/react": "^19.2.7",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.1",
+		"electron": "^39.0.0",
+		"electron-builder": "^26.0.0",
+		"electron-vite": "^5.0.0",
+		"eslint": "^9.39.1",
+		"tailwindcss": "^4.3.2",
+		"typescript": "^5.8.3",
+		"vite": "^8.0.16"
+	},
+	"build": {
+		"appId": "com.burro.desktop",
+		"productName": "Burro",
+		"directories": {
+			"output": "release"
+		},
+		"files": ["out/**/*", "package.json"],
+		"fileAssociations": [
+			{
+				"ext": "tldr",
+				"name": "Burro Document",
+				"description": "Burro visual canvas document",
+				"role": "Editor"
+			}
+		],
+		"mac": {
+			"target": ["dmg", "zip"]
+		},
+		"win": {
+			"target": ["nsis"]
+		},
+		"linux": {
+			"target": ["AppImage", "deb"],
+			"category": "Utility"
+		}
+	}
+}

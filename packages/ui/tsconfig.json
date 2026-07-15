@@ -1,0 +1,4 @@
+{
+	"extends": "@burro/config/tsconfig.web.json",
+	"include": ["src"]
+}

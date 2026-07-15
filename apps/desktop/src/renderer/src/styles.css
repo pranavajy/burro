@@ -1,0 +1,103 @@
+/* Inter is an online enhancement; the complete system-font stack below is
+   intentionally available immediately when the desktop app is offline. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('tldraw/tldraw.css');
+@import 'tailwindcss';
+@source '../../../../../packages';
+
+body,
+.tl-container,
+.tl-canvas,
+.tl-theme__dark {
+	background-color: #141414 !important;
+	font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	overscroll-behavior: none;
+}
+
+html,
+body,
+#root {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Desktop window chrome — the canvas extends to the window edges; a thin    */
+/* invisible strip along the top acts as the draggable titlebar.             */
+/* ------------------------------------------------------------------------ */
+
+.desktop-shell {
+	position: fixed;
+	inset: 0;
+}
+
+.desktop-drag-region {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 38px;
+	z-index: 900;
+	-webkit-app-region: drag;
+	user-select: none;
+}
+
+/* Floating UI that overlaps the drag strip must stay clickable. */
+.burro-canvas-menu,
+.burro-canvas-actions,
+.desktop-window-controls {
+	-webkit-app-region: no-drag;
+}
+
+/* macOS: shift the floating canvas menu clear of the traffic lights. */
+.desktop-shell[data-platform='darwin'] .burro-canvas-menu {
+	left: 84px !important;
+}
+
+/* Windows/Linux: shift the actions toolbar clear of the window controls. */
+.desktop-shell[data-platform='win32'] .burro-canvas-actions,
+.desktop-shell[data-platform='linux'] .burro-canvas-actions {
+	right: 148px !important;
+}
+
+.desktop-window-controls {
+	position: fixed;
+	top: 0;
+	right: 0;
+	z-index: 1002;
+	display: flex;
+	height: 38px;
+	user-select: none;
+}
+
+.desktop-window-controls button {
+	width: 44px;
+	height: 100%;
+	border: 0;
+	background: transparent;
+	color: #71717a;
+	font: inherit;
+	font-size: 14px;
+	cursor: default;
+}
+
+.desktop-window-controls button:hover {
+	background: rgba(255, 255, 255, 0.065);
+	color: #e4e4e7;
+}
+
+.desktop-window-controls .desktop-close:hover {
+	background: #c42b1c;
+	color: white;
+}
+
+/* Desktop apps don't select text on UI chrome. */
+.tlui-menu-zone,
+.tlui-navigation-zone,
+.tlui-toolbar,
+.burro-canvas-menu,
+.burro-canvas-actions {
+	user-select: none;
+}

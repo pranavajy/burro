@@ -5,7 +5,10 @@ node_modules
 
 # production / build output
 dist
+out
+release
 .wrangler
+.turbo
 
 # local env files containing secrets
 .env
